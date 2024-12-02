@@ -1,9 +1,9 @@
-use std::{collections::BinaryHeap, fs};
+use std::{collections::HashMap, fs, time::Instant};
 
 fn main() {
     let input = fs::read_to_string("./src/bin/day1/input.txt").expect("File not found");
 
-    let (mut a, mut b) = input
+    let (mut a, mut b): (Vec<_>, Vec<_>) = input
         .lines()
         .map(|line| {
             let mut values = line.split_whitespace();
@@ -20,21 +20,32 @@ fn main() {
                     .expect("invalid numberic"),
             )
         })
-        .fold(
-            (BinaryHeap::<usize>::new(), BinaryHeap::<usize>::new()),
-            |(mut a, mut b), (x, y)| {
-                a.push(x);
-                b.push(y);
-                (a, b)
-            },
-        );
+        .unzip();
 
-    let mut sum = 0;
-    while let Some(x) = a.pop() {
-        let y = b.pop().unwrap();
-        let diff = x.abs_diff(y);
-        println!("{x},{y} = {diff}",);
-        sum += diff;
-    }
-    println!("{sum}");
+    a.sort();
+    b.sort();
+
+    let hash_b = b.iter().fold(HashMap::new(), |mut map, key| {
+        map.entry(key).and_modify(|val| *val += 1).or_insert(1);
+        map
+    });
+
+    let t = Instant::now();
+    println!(
+        "Part 1: {} - ({:?})",
+        a.iter()
+            .zip(b.iter())
+            .map(|(x, &y)| x.abs_diff(y))
+            .sum::<usize>(),
+        t.elapsed()
+    );
+
+    let t = Instant::now();
+    println!(
+        "Part 2: {} - ({:?})",
+        a.iter()
+            .map(|key| key * hash_b.get(key).unwrap_or(&0))
+            .sum::<usize>(),
+        t.elapsed()
+    );
 }
