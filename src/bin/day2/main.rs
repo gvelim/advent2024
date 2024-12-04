@@ -1,58 +1,50 @@
-use std::{
-    fs,
-    num::ParseIntError,
-    rc::{self, Rc},
-    str::FromStr,
-};
+use std::{fs, num::ParseIntError, rc, str::FromStr, time};
 
 fn main() {
-    let input = fs::read_to_string("src/bin/day2/sample.txt").expect("File not found");
+    let input = fs::read_to_string("src/bin/day2/input.txt").expect("File not found");
     let lists = input
         .lines()
         .map(|line| line.parse::<Report>().expect("Invalid list"))
         .collect::<Vec<Report>>();
 
-    for ele in lists.iter() {
-        println!("{:?} => {}", ele, ele.is_safe())
-    }
-}
+    let t = time::Instant::now();
+    let count = lists.iter().filter(|r| r.is_safe()).count();
+    println!("Part 1: {} = {:?}", count, t.elapsed());
+    assert_eq!(count, 407);
 
-#[derive(Debug)]
-enum Direction {
-    Asc,
-    Desc,
+    let t = time::Instant::now();
+    let count = lists.iter().filter(|r| r.is_safe_dumpen()).count();
+    println!("Part 2: {} - {:?}", count, t.elapsed());
+    assert_eq!(count, 459);
 }
 
 #[derive(Debug)]
 struct Report {
     levels: rc::Rc<[usize]>,
-    dir: Direction,
 }
 
 impl Report {
-    fn is_safe(&self) -> bool {
-        self.levels.windows(2).all(|a| {
-            let d = a[0].abs_diff(a[1]);
-            (1..=3).contains(&d)
-                && match self.dir {
-                    Direction::Asc => a[0] < a[1],
-                    Direction::Desc => a[0] > a[1],
+    fn validate(r: &[usize]) -> bool {
+        r.windows(2).all(|a| {
+            (1..=3).contains(&(a[0].abs_diff(a[1])))
+                && match r[0] < r[1] {
+                    true => a[0] < a[1],
+                    false => a[0] > a[1],
                 }
         })
     }
-}
 
-fn direction(levels: Rc<[usize]>) -> Result<Direction, String> {
-    let mut iter = levels.iter();
-    let first = iter.next().unwrap();
-    for last in iter {
-        match first.cmp(last) {
-            std::cmp::Ordering::Less => return Ok(Direction::Asc),
-            std::cmp::Ordering::Greater => return Ok(Direction::Desc),
-            std::cmp::Ordering::Equal => (),
-        };
+    fn is_safe(&self) -> bool {
+        Report::validate(&self.levels)
     }
-    Err("all numbers equal to first".to_string())
+
+    fn is_safe_dumpen(&self) -> bool {
+        (0..self.levels.len()).any(|p| {
+            let mut levels = self.levels.to_vec();
+            levels.remove(p);
+            Report::validate(&levels)
+        })
+    }
 }
 
 impl FromStr for Report {
@@ -63,7 +55,6 @@ impl FromStr for Report {
             .split_ascii_whitespace()
             .map(|n| n.parse::<usize>())
             .collect::<Result<rc::Rc<[usize]>, ParseIntError>>()?;
-        let dir = direction(levels.clone()).expect("msg");
-        Ok(Report { levels, dir })
+        Ok(Report { levels })
     }
 }
