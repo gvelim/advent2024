@@ -1,6 +1,6 @@
 use nom::branch::alt;
 use nom::{
-    IResult, Parser,
+    IResult,
     bytes::complete::tag,
     character::complete::{anychar, char},
     combinator::value,
@@ -9,6 +9,7 @@ use nom::{
 };
 use std::str::FromStr;
 use std::time::Instant;
+use nom::combinator::map;
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day3/input.txt").unwrap();
@@ -103,12 +104,14 @@ impl FromStr for Program {
 fn parse_mul(i: &str) -> IResult<&str, Instruction> {
     delimited(
         tag("mul("),
-        separated_pair(
-            nom::character::complete::u32,
-            char(','),
-            nom::character::complete::u32,
-        )
-        .map(|(x, y)| Instruction::MUL(x, y)),
+        map(
+            separated_pair(
+                nom::character::complete::u32,
+                char(','),
+                nom::character::complete::u32,
+            ),
+            |(x, y)| Instruction::MUL(x, y)
+        ),
         tag(")"),
     )(i)
 }
