@@ -1,4 +1,5 @@
 use nom::branch::alt;
+use nom::combinator::map;
 use nom::{
     IResult,
     bytes::complete::tag,
@@ -9,7 +10,6 @@ use nom::{
 };
 use std::str::FromStr;
 use std::time::Instant;
-use nom::combinator::map;
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day3/input.txt").unwrap();
@@ -17,24 +17,14 @@ fn main() {
         .parse::<Program>()
         .map_err(|e| panic!("{e:?}"))
         .unwrap();
-    let mut cpu = CPU::default();
 
     let t = Instant::now();
-    let sum = pgm
-        .instructions
-        .iter()
-        .filter_map(|&i| cpu.run_instruction(i))
-        .sum::<u32>();
+    let sum = CPU::use_simple_instructions().run(&pgm);
     println!("part1: {} - {:?}", sum, t.elapsed());
     assert_eq!(185797128, sum);
 
     let t = Instant::now();
-    cpu.use_enhanced_instr(true);
-    let sum = pgm
-        .instructions
-        .iter()
-        .filter_map(|&i| cpu.run_instruction(i))
-        .sum::<u32>();
+    let sum = CPU::use_enhanced_instructions().run(&pgm);
     println!("part1: {} - {:?}", sum, t.elapsed());
     assert_eq!(89798695, sum)
 }
@@ -46,6 +36,24 @@ struct CPU {
 }
 
 impl CPU {
+    fn use_simple_instructions() -> CPU {
+        CPU {
+            run_state: true,
+            use_enhanced: false,
+        }
+    }
+    fn use_enhanced_instructions() -> CPU {
+        CPU {
+            run_state: true,
+            use_enhanced: true,
+        }
+    }
+    fn run(&mut self, pgm: &Program) -> u32 {
+        pgm.instructions
+            .iter()
+            .filter_map(|&i| self.run_instruction(i))
+            .sum::<u32>()
+    }
     fn run_instruction(&mut self, instruction: Instruction) -> Option<u32> {
         match instruction {
             Instruction::MUL(x, y) if self.run_state => Some(x * y),
@@ -58,18 +66,6 @@ impl CPU {
                 None
             }
             _ => None,
-        }
-    }
-    fn use_enhanced_instr(&mut self, state: bool) {
-        self.use_enhanced = state
-    }
-}
-
-impl Default for CPU {
-    fn default() -> Self {
-        CPU {
-            run_state: true,
-            use_enhanced: false,
         }
     }
 }
@@ -110,7 +106,7 @@ fn parse_mul(i: &str) -> IResult<&str, Instruction> {
                 char(','),
                 nom::character::complete::u32,
             ),
-            |(x, y)| Instruction::MUL(x, y)
+            |(x, y)| Instruction::MUL(x, y),
         ),
         tag(")"),
     )(i)
