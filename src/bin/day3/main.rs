@@ -28,7 +28,7 @@ fn main() {
     assert_eq!(185797128, sum);
 
     let t = Instant::now();
-    cpu.set_enhanced_instructions(true);
+    cpu.use_enhanced_instr(true);
     let sum = pgm
         .instructions
         .iter()
@@ -41,26 +41,26 @@ fn main() {
 #[derive(Debug)]
 struct CPU {
     run_state: bool,
-    enhanced: bool,
+    use_enhanced: bool,
 }
 
 impl CPU {
     fn run_instruction(&mut self, instruction: Instruction) -> Option<u32> {
         match instruction {
             Instruction::MUL(x, y) if self.run_state => Some(x * y),
-            Instruction::DONT if self.enhanced => {
+            Instruction::DONT if self.use_enhanced => {
                 self.run_state = false;
                 None
             }
-            Instruction::DO if self.enhanced => {
+            Instruction::DO if self.use_enhanced => {
                 self.run_state = true;
                 None
             }
             _ => None,
         }
     }
-    fn set_enhanced_instructions(&mut self, state: bool) {
-        self.enhanced = state
+    fn use_enhanced_instr(&mut self, state: bool) {
+        self.use_enhanced = state
     }
 }
 
@@ -68,7 +68,7 @@ impl Default for CPU {
     fn default() -> Self {
         CPU {
             run_state: true,
-            enhanced: false,
+            use_enhanced: false,
         }
     }
 }
