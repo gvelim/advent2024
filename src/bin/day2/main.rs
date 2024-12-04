@@ -51,10 +51,11 @@ impl FromStr for Report {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let levels = s
-            .split_ascii_whitespace()
-            .map(|n| n.parse::<usize>())
-            .collect::<Result<rc::Rc<[usize]>, ParseIntError>>()?;
-        Ok(Report { levels })
+        Ok(Report {
+            levels: s
+                .split_ascii_whitespace()
+                .map(|n| n.parse::<usize>())
+                .collect::<Result<rc::Rc<[usize]>, ParseIntError>>()?
+        })
     }
 }
