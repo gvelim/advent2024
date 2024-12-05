@@ -2,8 +2,8 @@ use std::{fmt::Debug, rc::Rc, str::FromStr};
 use super::location::Location;
 
 pub(crate) struct Field<T> where T: Copy + Clone {
-    cells: Rc<[T]>,
-    length: usize
+    pub cells: Rc<[T]>,
+    pub length: usize
 }
 
 impl<T> Field<T> where T: Copy + Clone {
