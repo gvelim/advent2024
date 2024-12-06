@@ -12,6 +12,7 @@ fn main() {
     let (height, width) = (field.height(), field.width());
 
     let t = Instant::now();
+    // we will scan also the reverse string at the same time hence we need only half directions
     let xmas_scanner = search_directions(&field, &[(1,0),(0,1),(1,1),(1,-1)]);
     let sum = (0..width)
         .map(|x| (0..height)
@@ -44,24 +45,25 @@ fn main() {
 }
 
 fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [Direction]) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,Direction)> + 'a> {
-    move |word: &'a str, pos: Location| Box::new(
-        dirs.iter()
-        .copied()
-        .filter(move |&dir| is_word_matched(field, word, pos, dir))
-        .map(move |dir| (pos,dir))
-    )
+    // return a function that takes a world and location
+    // and performs a scan on field and set of directions that has be constructed with
+    move |word: &'a str, pos: Location| {
+        let ret = dirs.iter()
+            .copied()
+            .filter(move |&dir| is_word_matched(field, word, pos, dir))
+            .map(move |dir| (pos,dir));
+        // iterator must be boxed as it doesn;t compile with "-> impl Iterator"
+        Box::new(ret)
+    }
 }
 
 fn is_word_matched(field: &Field<char>, word: &str, start: Location, dir: Direction) -> bool {
     word.char_indices()
-        // calculate new location based on (a) current index (b) starting position & (c) direction
-        .map(|(i,c)| start
+        .all(|(i,c)| start
+            // calculate new location based on (a) current index (b) starting position & (c) direction
             .move_relative((dir.0 * i as isize, dir.1 * i as isize))
-            .map(|p| (p,c))
-        )
-        // for offset location, check for matching letter
-        .all(|val|
-            val.map(|(p,c)| field
+            .map(|p| field
+                // match the value in position with input's character
                 .get_pos(p)
                 .map(|&val| val == c)
                 .unwrap_or(false)

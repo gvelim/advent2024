@@ -1,13 +1,15 @@
 use std::{fmt::Debug, rc::Rc, str::FromStr};
 use super::location::Location;
 
-pub(crate) struct Field<T> where T: Copy + Clone {
+pub(crate) struct Field<T> {
     cells: Rc<[Rc<[T]>]>
 }
 
-impl<T> Field<T> where T: Copy + Clone {
+impl<T> Field<T> {
     pub(crate) fn get_pos(&self, Location(x, y): Location) -> Option<&T>
     {
+        // use build-in bounds checker of the two arrays
+        // out of bounds will result to None
         self.cells
             .get(y)
             .and_then(|w| w.get(x))
