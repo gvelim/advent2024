@@ -37,7 +37,7 @@ fn main() {
         )
         .sum::<usize>();
     println!("Part 2: Found ({sum}) MAS crosses - {:?}",t.elapsed());
-    assert_eq!(1965,sum-1);
+    assert_eq!(1965,sum);
 }
 
 fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [Direction]) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,Direction)> + 'a> {
@@ -60,7 +60,7 @@ fn is_word_matched(field: &Field<char>, word: &str, start: Location, dir: Direct
         .all(|val|
             val.map(|(p,c)| field
                 .get_pos(p)
-                .map(|val| val == c)
+                .map(|&val| val == c)
                 .unwrap_or(false)
             ).unwrap_or(false)
         )

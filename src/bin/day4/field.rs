@@ -2,22 +2,19 @@ use std::{fmt::Debug, rc::Rc, str::FromStr};
 use super::location::Location;
 
 pub(crate) struct Field<T> where T: Copy + Clone {
-    cells: Rc<[T]>,
-    length: usize
+    cells: Rc<[Rc<[T]>]>
 }
 
 impl<T> Field<T> where T: Copy + Clone {
-    pub(crate) fn get_pos(&self, Location(x, y): Location) -> Option<T>
+    pub(crate) fn get_pos(&self, Location(x, y): Location) -> Option<&T>
     {
-        let index = y * self.length + x;
-        if x <= self.length && index < self.cells.len() {
-            Some(self.cells[index])
-        } else {
-            None
-        }
+
+        self.cells
+            .get(y)
+            .and_then(|w| w.get(x))
     }
-    pub fn width(&self) -> usize { self.length }
-    pub fn height(&self) -> usize { self.cells.len() / self.length }
+    pub fn width(&self) -> usize { self.cells.first().map(|v| v.len()).unwrap_or(0) }
+    pub fn height(&self) -> usize { self.cells.len() }
 }
 
 impl FromStr for Field<char> {
@@ -27,9 +24,8 @@ impl FromStr for Field<char> {
         Ok(Field {
             cells: s
                 .lines()
-                .flat_map(|s| s.chars())
-                .collect::<Rc<[char]>>(),
-            length: s.lines().next().unwrap().len()
+                .map(|s| s.chars().collect::<Rc<[char]>>())
+                .collect::<Rc<[_]>>(),
         })
     }
 }
@@ -37,7 +33,7 @@ impl FromStr for Field<char> {
 impl<T> Debug for Field<T> where T: Copy + Clone + Debug {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (p, c) in self.cells.iter().enumerate() {
-            if p % self.length == 0 { writeln!(f)? }
+            if p % self.width() == 0 { writeln!(f)? }
             write!(f, "{:?}", c)?;
         }
         writeln!(f)?;
@@ -54,12 +50,12 @@ mod test {
         let input = std::fs::read_to_string("src/bin/day4/sample.txt").expect("File not found");
         let field = input.parse::<Field<char>>().expect("Doesn't error");
 
-        assert_eq!(field.get_pos(Location(9, 0)), Some('M'));
-        assert_eq!(field.get_pos(Location(9, 1)), Some('A'));
-        assert_eq!(field.get_pos(Location(0, 8)), Some('M'));
-        assert_eq!(field.get_pos(Location(0, 9)), Some('M'));
-        assert_eq!(field.get_pos(Location(9, 8)), Some('M'));
-        assert_eq!(field.get_pos(Location(9, 9)), Some('X'));
+        assert_eq!(field.get_pos(Location(9, 0)), Some(&'M'));
+        assert_eq!(field.get_pos(Location(9, 1)), Some(&'A'));
+        assert_eq!(field.get_pos(Location(0, 8)), Some(&'M'));
+        assert_eq!(field.get_pos(Location(0, 9)), Some(&'M'));
+        assert_eq!(field.get_pos(Location(9, 8)), Some(&'M'));
+        assert_eq!(field.get_pos(Location(9, 9)), Some(&'X'));
         assert_eq!(field.get_pos(Location(10, 9)), None);
         assert_eq!(field.get_pos(Location(9, 10)), None);
     }
