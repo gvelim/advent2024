@@ -12,12 +12,10 @@ fn main() {
     let (height, width) = (field.height(), field.width());
 
     let t = Instant::now();
-    let scanner = find_at_location(&field);
+    let xmas_scanner = search_directions(&field, &[(1,0),(0,1),(1,1),(1,-1),(-1,0),(0,-1),(-1,-1),(-1,1)]);
     let sum = (0..width).map(|x|
         (0..height).map(|y|
-            scanner("XMAS", Location(x,y), &[(1,0),(0,1),(1,1),(1,-1),(-1,0),(0,-1),(-1,-1),(-1,1)])
-                // .inspect(|r| println!("{:?}",r))
-                .count()
+            xmas_scanner("XMAS", Location(x,y)).count()
         )
         .sum::<usize>()
     )
@@ -26,15 +24,16 @@ fn main() {
     assert_eq!(2603,sum);
 
     let t = Instant::now();
+    let mas_leg1_scanner = search_directions(&field, &[(1,1)]);
+    let mas_leg2_scanner = search_directions(&field, &[(1,-1)]);
     let sum = (0..height).map(|y|
         (0..width)
             .filter(|&x|
-                (find_at_location(&field)("MAS",Location(x,y),&[(1,1)]).count() == 1 ||
-                    find_at_location(&field)("SAM",Location(x,y),&[(1,1)]).count() == 1) &&
-                    (find_at_location(&field)("MAS",Location(x,y+2),&[(1,-1)]).count() == 1 ||
-                        find_at_location(&field)("SAM",Location(x,y+2),&[(1,-1)]).count() == 1)
+                (mas_leg1_scanner("MAS",Location(x,y)).count() == 1 ||
+                    mas_leg1_scanner("SAM",Location(x,y)).count() == 1) &&
+                    (mas_leg2_scanner("MAS",Location(x,y+2)).count() == 1 ||
+                        mas_leg2_scanner("SAM",Location(x,y+2)).count() == 1)
             )
-            // .inspect(|r| println!("Found at location: {:?}",(r,y)))
             .count()
         )
         .sum::<usize>();
@@ -42,17 +41,16 @@ fn main() {
     assert_eq!(1965,sum-1);
 }
 
-fn find_at_location<'a>(field: &'a Field<char>) -> impl Fn(&'a str, Location, &'a [Direction]) -> Box<dyn Iterator<Item=(Location,Direction)> + 'a> {
-    move |word: &'a str, loc: Location, dirs: &[Direction]| Box::new(
-        dirs
-        .iter()
+fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [Direction]) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,Direction)> + 'a> {
+    move |word: &'a str, pos: Location| Box::new(
+        dirs.iter()
         .copied()
-        .filter(move |&d| find_in_direction(field, word, loc, d))
-        .map(move |dir| (loc,dir))
+        .filter(move |&dir| is_word_matched(field, word, pos, dir))
+        .map(move |dir| (pos,dir))
     )
 }
 
-fn find_in_direction(field: &Field<char>, word: &str, start: Location, dir: Direction) -> bool {
+fn is_word_matched(field: &Field<char>, word: &str, start: Location, dir: Direction) -> bool {
     word.char_indices()
         // calculate new location based on (a) current index (b) starting position & (c) direction
         .map(|(i,c)| start
@@ -75,19 +73,19 @@ fn test_scan_for_xmas() {
     let input = std::fs::read_to_string("src/bin/day4/sample.txt").expect("File not found");
     let field = input.parse::<Field<char>>().expect("Doesn't error");
 
-    assert_eq!(true, find_in_direction(&field, "XMAS", Location(9, 9), (-1, -1)));
-    assert_eq!(false, find_in_direction(&field, "XMAS", Location(8, 9), (-1, -1)));
-    assert_eq!(false, find_in_direction(&field, "XMAS", Location(7, 9), (-1, -1)));
-    assert_eq!(false, find_in_direction(&field, "XMAS", Location(6, 9), (-1, -1)));
-    assert_eq!(true, find_in_direction(&field, "XMAS", Location(5, 9), (-1, -1)));
-    assert_eq!(false, find_in_direction(&field, "XMAS", Location(4, 9), (-1, -1)));
-    assert_eq!(true, find_in_direction(&field, "XMAS", Location(3, 9), (-1, -1)));
+    assert_eq!(true, is_word_matched(&field, "XMAS", Location(9, 9), (-1, -1)));
+    assert_eq!(false, is_word_matched(&field, "XMAS", Location(8, 9), (-1, -1)));
+    assert_eq!(false, is_word_matched(&field, "XMAS", Location(7, 9), (-1, -1)));
+    assert_eq!(false, is_word_matched(&field, "XMAS", Location(6, 9), (-1, -1)));
+    assert_eq!(true, is_word_matched(&field, "XMAS", Location(5, 9), (-1, -1)));
+    assert_eq!(false, is_word_matched(&field, "XMAS", Location(4, 9), (-1, -1)));
+    assert_eq!(true, is_word_matched(&field, "XMAS", Location(3, 9), (-1, -1)));
 
-    assert_eq!(true, find_in_direction(&field, "XMAS", Location(9, 9), (1, 0)));
-    assert_eq!(false, find_in_direction(&field, "XMAS", Location(8, 9), (1, 0)));
-    assert_eq!(false, find_in_direction(&field, "XMAS", Location(7, 9), (1, 0)));
-    assert_eq!(false, find_in_direction(&field, "XMAS", Location(6, 9), (1, 0)));
-    assert_eq!(true, find_in_direction(&field, "XMAS", Location(5, 9), (1, 0)));
-    assert_eq!(false, find_in_direction(&field, "XMAS", Location(4, 9), (1, 0)));
-    assert_eq!(true, find_in_direction(&field, "XMAS", Location(3, 9), (1, 0)));
+    assert_eq!(true, is_word_matched(&field, "XMAS", Location(9, 9), (1, 0)));
+    assert_eq!(false, is_word_matched(&field, "XMAS", Location(8, 9), (1, 0)));
+    assert_eq!(false, is_word_matched(&field, "XMAS", Location(7, 9), (1, 0)));
+    assert_eq!(false, is_word_matched(&field, "XMAS", Location(6, 9), (1, 0)));
+    assert_eq!(true, is_word_matched(&field, "XMAS", Location(5, 9), (1, 0)));
+    assert_eq!(false, is_word_matched(&field, "XMAS", Location(4, 9), (1, 0)));
+    assert_eq!(true, is_word_matched(&field, "XMAS", Location(3, 9), (1, 0)));
 }
