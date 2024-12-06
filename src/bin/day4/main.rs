@@ -12,10 +12,13 @@ fn main() {
     let (height, width) = (field.height(), field.width());
 
     let t = Instant::now();
-    let xmas_scanner = search_directions(&field, &[(1,0),(0,1),(1,1),(1,-1),(-1,0),(0,-1),(-1,-1),(-1,1)]);
+    let xmas_scanner = search_directions(&field, &[(1,0),(0,1),(1,1),(1,-1)]);
     let sum = (0..width)
         .map(|x| (0..height)
-            .map(|y| xmas_scanner("XMAS", Location(x,y)).count())
+            .map(|y|
+                xmas_scanner("XMAS", Location(x,y)).count()
+                + xmas_scanner("SAMX", Location(x,y)).count()
+            )
             .sum::<usize>()
         )
         .sum::<usize>();
