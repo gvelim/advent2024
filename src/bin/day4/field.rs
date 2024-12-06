@@ -8,7 +8,6 @@ pub(crate) struct Field<T> where T: Copy + Clone {
 impl<T> Field<T> where T: Copy + Clone {
     pub(crate) fn get_pos(&self, Location(x, y): Location) -> Option<&T>
     {
-
         self.cells
             .get(y)
             .and_then(|w| w.get(x))
