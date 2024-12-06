@@ -13,21 +13,20 @@ fn main() {
 
     let t = Instant::now();
     let xmas_scanner = search_directions(&field, &[(1,0),(0,1),(1,1),(1,-1),(-1,0),(0,-1),(-1,-1),(-1,1)]);
-    let sum = (0..width).map(|x|
-        (0..height).map(|y|
-            xmas_scanner("XMAS", Location(x,y)).count()
+    let sum = (0..width)
+        .map(|x| (0..height)
+            .map(|y| xmas_scanner("XMAS", Location(x,y)).count())
+            .sum::<usize>()
         )
-        .sum::<usize>()
-    )
-    .sum::<usize>();
+        .sum::<usize>();
     println!("Part 1: Found ({sum}) XMAS words - {:?}",t.elapsed());
     assert_eq!(2603,sum);
 
     let t = Instant::now();
     let mas_leg1_scanner = search_directions(&field, &[(1,1)]);
     let mas_leg2_scanner = search_directions(&field, &[(1,-1)]);
-    let sum = (0..height).map(|y|
-        (0..width)
+    let sum = (0..height)
+        .map(|y| (0..width)
             .filter(|&x|
                 (mas_leg1_scanner("MAS",Location(x,y)).count() == 1 ||
                     mas_leg1_scanner("SAM",Location(x,y)).count() == 1) &&
@@ -73,19 +72,11 @@ fn test_scan_for_xmas() {
     let input = std::fs::read_to_string("src/bin/day4/sample.txt").expect("File not found");
     let field = input.parse::<Field<char>>().expect("Doesn't error");
 
-    assert_eq!(true, is_word_matched(&field, "XMAS", Location(9, 9), (-1, -1)));
-    assert_eq!(false, is_word_matched(&field, "XMAS", Location(8, 9), (-1, -1)));
-    assert_eq!(false, is_word_matched(&field, "XMAS", Location(7, 9), (-1, -1)));
-    assert_eq!(false, is_word_matched(&field, "XMAS", Location(6, 9), (-1, -1)));
-    assert_eq!(true, is_word_matched(&field, "XMAS", Location(5, 9), (-1, -1)));
-    assert_eq!(false, is_word_matched(&field, "XMAS", Location(4, 9), (-1, -1)));
-    assert_eq!(true, is_word_matched(&field, "XMAS", Location(3, 9), (-1, -1)));
-
-    assert_eq!(true, is_word_matched(&field, "XMAS", Location(9, 9), (1, 0)));
-    assert_eq!(false, is_word_matched(&field, "XMAS", Location(8, 9), (1, 0)));
-    assert_eq!(false, is_word_matched(&field, "XMAS", Location(7, 9), (1, 0)));
-    assert_eq!(false, is_word_matched(&field, "XMAS", Location(6, 9), (1, 0)));
-    assert_eq!(true, is_word_matched(&field, "XMAS", Location(5, 9), (1, 0)));
-    assert_eq!(false, is_word_matched(&field, "XMAS", Location(4, 9), (1, 0)));
-    assert_eq!(true, is_word_matched(&field, "XMAS", Location(3, 9), (1, 0)));
+    assert!(is_word_matched(&field, "XMAS", Location(9, 9), (-1, -1)));
+    assert!(!is_word_matched(&field, "XMAS", Location(8, 9), (-1, -1)));
+    assert!(!is_word_matched(&field, "XMAS", Location(7, 9), (-1, -1)));
+    assert!(!is_word_matched(&field, "XMAS", Location(6, 9), (-1, -1)));
+    assert!(is_word_matched(&field, "XMAS", Location(5, 9), (-1, -1)));
+    assert!(!is_word_matched(&field, "XMAS", Location(4, 9), (-1, -1)));
+    assert!(is_word_matched(&field, "XMAS", Location(3, 9), (-1, -1)));
 }
