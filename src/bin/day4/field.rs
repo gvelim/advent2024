@@ -2,8 +2,8 @@ use std::{fmt::Debug, rc::Rc, str::FromStr};
 use super::location::Location;
 
 pub(crate) struct Field<T> where T: Copy + Clone {
-    pub cells: Rc<[T]>,
-    pub length: usize
+    cells: Rc<[T]>,
+    length: usize
 }
 
 impl<T> Field<T> where T: Copy + Clone {
@@ -16,6 +16,8 @@ impl<T> Field<T> where T: Copy + Clone {
             None
         }
     }
+    pub fn width(&self) -> usize { self.length }
+    pub fn height(&self) -> usize { self.cells.len() / self.length }
 }
 
 impl FromStr for Field<char> {
@@ -25,8 +27,7 @@ impl FromStr for Field<char> {
         Ok(Field {
             cells: s
                 .lines()
-                .map(|s| s.chars())
-                .flatten()
+                .flat_map(|s| s.chars())
                 .collect::<Rc<[char]>>(),
             length: s.lines().next().unwrap().len()
         })
