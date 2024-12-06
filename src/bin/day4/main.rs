@@ -12,9 +12,10 @@ fn main() {
     let (height, width) = (field.height(), field.width());
 
     let t = Instant::now();
+    let scanner = find_at_location(&field);
     let sum = (0..width).map(|x|
         (0..height).map(|y|
-            find_at_location(&field, "XMAS", Location(x,y), &[(1,0),(0,1),(1,1),(1,-1),(-1,0),(0,-1),(-1,-1),(-1,1)])
+            scanner("XMAS", Location(x,y), &[(1,0),(0,1),(1,1),(1,-1),(-1,0),(0,-1),(-1,-1),(-1,1)])
                 // .inspect(|r| println!("{:?}",r))
                 .count()
         )
@@ -28,10 +29,10 @@ fn main() {
     let sum = (0..height).map(|y|
         (0..width)
             .filter(|&x|
-                (find_at_location(&field,"MAS",Location(x,y),&[(1,1)]).count() == 1 ||
-                    find_at_location(&field,"SAM",Location(x,y),&[(1,1)]).count() == 1) &&
-                    (find_at_location(&field,"MAS",Location(x,y+2),&[(1,-1)]).count() == 1 ||
-                        find_at_location(&field,"SAM",Location(x,y+2),&[(1,-1)]).count() == 1)
+                (find_at_location(&field)("MAS",Location(x,y),&[(1,1)]).count() == 1 ||
+                    find_at_location(&field)("SAM",Location(x,y),&[(1,1)]).count() == 1) &&
+                    (find_at_location(&field)("MAS",Location(x,y+2),&[(1,-1)]).count() == 1 ||
+                        find_at_location(&field)("SAM",Location(x,y+2),&[(1,-1)]).count() == 1)
             )
             // .inspect(|r| println!("Found at location: {:?}",(r,y)))
             .count()
@@ -41,11 +42,14 @@ fn main() {
     assert_eq!(1965,sum-1);
 }
 
-fn find_at_location(field: &Field<char>, word: &str, loc: Location, dirs: &[Direction]) -> impl Iterator<Item=(Location,Direction)> {
-    dirs.iter()
+fn find_at_location<'a>(field: &'a Field<char>) -> impl Fn(&'a str, Location, &'a [Direction]) -> Box<dyn Iterator<Item=(Location,Direction)> + 'a> {
+    move |word: &'a str, loc: Location, dirs: &[Direction]| Box::new(
+        dirs
+        .iter()
         .copied()
         .filter(move |&d| find_in_direction(field, word, loc, d))
         .map(move |dir| (loc,dir))
+    )
 }
 
 fn find_in_direction(field: &Field<char>, word: &str, start: Location, dir: Direction) -> bool {
