@@ -12,13 +12,13 @@ fn main() {
     let rules = s.next().unwrap()
         .parse::<OrderRules>()
         .unwrap();
-    let updates = s.next().unwrap()
+    let manual_updates = s.next().unwrap()
         .lines()
         .map(|line| line.parse::<ManualUpdates>().unwrap())
         .collect::<Rc<[_]>>();
 
     let validator = make_validator(&rules);
-    let score = updates
+    let score = manual_updates
         .iter()
         // .inspect(|d| print!("{:?}",d))
         .filter(|&u| validator(u))
@@ -28,7 +28,7 @@ fn main() {
     println!("Part 1: valid updates score: {score}");
     assert_eq!(6949,score);
 
-    let score = updates
+    let score = manual_updates
         .iter()
         .filter(|u| !validator(u))
         .map(sort_update(&rules))
@@ -38,6 +38,16 @@ fn main() {
     assert_eq!(4145,score);
 
 
+}
+
+fn make_validator(rules: &OrderRules) ->  impl Fn(&ManualUpdates) -> bool {
+    |updates: &ManualUpdates| {
+        let tmp = sort_update(rules)(updates);
+
+        tmp.entries()
+            .zip(updates.entries())
+            .all(|(a,b)| a == b)
+    }
 }
 
 fn sort_update(rules: &OrderRules) ->  impl Fn(&ManualUpdates) -> ManualUpdates {
@@ -57,34 +67,5 @@ fn sort_update(rules: &OrderRules) ->  impl Fn(&ManualUpdates) -> ManualUpdates 
         });
 
         ManualUpdates { list }
-    }
-}
-
-fn make_validator(rules: &OrderRules) ->  impl Fn(&ManualUpdates) -> bool {
-    |updates: &ManualUpdates| {
-        // println!(">> {updates:?}");
-        updates
-            .entries()
-            .enumerate()
-            // is each page followed by the correct pages ?
-            .all(|(i, &page)|{
-                rules.pages_to_follow(page)
-                    // .inspect(|p| print!("{:?} => {:?}, ",page,p))
-                    .map(|pages | {
-                        // pages that MUST follow in the update
-                        pages.iter()
-                            // current page position < following page(s) positions
-                            .all(|&follow_page|
-                                // page in the update list ?
-                                updates.contains(follow_page)
-                                    // .inspect(|p| print!("{:?}",(follow_page,p)))
-                                    .map(|following| following > i)
-                                    // .inspect(|p| print!("{},",if *p {"✓"} else {"✘"}))
-                                    .unwrap_or(true)
-                            )
-                    })
-                    // .inspect(|_| println!())
-                    .unwrap_or(true)
-            })
     }
 }
