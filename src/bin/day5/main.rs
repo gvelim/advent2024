@@ -28,10 +28,11 @@ fn main() {
     assert_eq!(6949,score);
 
     let t = Instant::now();
+    let reorder_update = ManualUpdates::sort_update(&rules);
     let score = manual_updates
         .iter()
         .filter(|update| !is_valid_order(update))
-        .map(ManualUpdates::sort_update(&rules))
+        .map(reorder_update)
         .map(|update| update.middle())
         .sum::<usize>();
     println!("Part 2: Score for fixed updates : {score} - {:?}",t.elapsed());

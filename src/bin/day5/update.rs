@@ -1,4 +1,4 @@
-use std::{cmp, fmt::Debug, num::ParseIntError, str::FromStr};
+use std::{fmt::Debug, num::ParseIntError, str::FromStr};
 use super::order::Page;
 use super::OrderRules;
 
@@ -13,7 +13,7 @@ impl ManualUpdates {
                 .entries()
                 .is_sorted_by(|&a,b|
                     rules
-                        .pages_to_follow(*a)
+                        .followed_by(*a)
                         .map(|set| set.contains(b))
                         .unwrap_or(false)
                 )
@@ -27,7 +27,7 @@ impl ManualUpdates {
             let mut list = updates.entries().cloned().collect::<Vec<_>>();
             list.sort_by(|&a,b| {
                 rules
-                    .pages_to_follow(a)
+                    .followed_by(a)
                     .map(|set|
                         if set.contains(b) { cmp::Ordering::Less } else { cmp::Ordering::Greater }
                     )

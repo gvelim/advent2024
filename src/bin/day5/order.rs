@@ -5,12 +5,12 @@ pub type Page = usize;
 
 #[derive(Debug)]
 pub struct OrderRules {
-    // Key: Page, Value: Set of Pages at lower priority
+    // Key: Page, Value: Set of Pages that MUST follow
     rules: HashMap<Page,PageSet>
 }
 
 impl OrderRules {
-    pub fn pages_to_follow(&self, p: Page) -> Option<&PageSet> {
+    pub fn followed_by(&self, p: Page) -> Option<&PageSet> {
         self.rules.get(&p)
     }
 }
