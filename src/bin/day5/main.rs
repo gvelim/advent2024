@@ -1,38 +1,43 @@
-use std::{rc::Rc, collections::HashMap, num::ParseIntError, str::FromStr};
-use nom::{self, branch::alt, bytes::{complete::{tag, take_till}, streaming::take_while}, character::{complete::digit1, streaming::{anychar, line_ending}}, combinator::{eof, map, map_res}, multi::{many1, many_till, separated_list1}, IResult, Map, Parser};
-
-
-fn parse_update(s: &str) -> IResult<&str, Rc<[usize]>> {
-    map(
-        separated_list1(tag(","),
-            map_res(digit1, |s: &str| s.parse::<usize>())
-        ), |v| v.into()
-    )(s)
-}
-
-fn parse_updates(s: &str) -> IResult<&str, Rc<[Rc<[usize]>]>> {
-    map(
-        separated_list1(
-            line_ending,
-            parse_update
-        ), |v| v.into()
-    )(s)
-}
+use std::{collections::{HashMap, HashSet}, num::ParseIntError, str::FromStr};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day5/sample.txt").expect("msg");
-    let lists = input.split("\n\n").skip(1).next().unwrap();
+    let mut s = input.split("\n\n");
+    let rules = s.next().unwrap();
+    let lists = s.next().unwrap();
 
-    println!("{:?}",
-        parse_updates(lists)
-    )
+    for ele in lists.lines() {
+        println!("{:?}", ele.parse::<Update>())
+    }
+
+    println!("{:?}", rules.parse::<OrderRules>())
 }
 
-struct OrderingRule {
-    x: usize,
-    y: usize
+#[derive(Debug)]
+struct OrderRules {
+    rules: HashMap<usize,HashSet<usize>>
 }
 
+impl FromStr for OrderRules {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut rules = HashMap::new();
+        for l in s.lines() {
+            let mut s = l.split('|');
+            let x = s.next().unwrap().parse::<usize>()?;
+            let y = s.next().unwrap().parse::<usize>()?;
+            rules
+                .entry(x)
+                .and_modify(|s: &mut HashSet<usize>| {s.insert(y);})
+                .or_insert(HashSet::new())
+                .insert(y);
+        }
+        Ok(OrderRules{rules})
+    }
+}
+
+#[derive(Debug, PartialEq)]
 struct Update {
     list: HashMap<usize,usize>
 }
@@ -46,7 +51,7 @@ impl FromStr for Update {
                 .split(',')
                 .enumerate()
                 .map(|(i,numeric)|
-                    numeric.parse::<usize>().map(|num| (i,num))
+                    numeric.parse::<usize>().map(|num| (num,i))
                 )
                 .collect::<Result<HashMap<usize,usize>,ParseIntError>>()?
         })
@@ -55,6 +60,8 @@ impl FromStr for Update {
 
 #[test]
 fn test_parse_update() {
-    let input = std::fs::read_to_string("str/bin/day5/sample.txt").expect("msg");
-    let lists = input.split("\n\n").next().unwrap();
+    assert_eq!(
+        "75,47,61,53,29".parse::<Update>().unwrap(),
+        Update { list: HashMap::from([(75,0),(47,1),(61,2),(53,3),(29,4)]) }
+    );
 }
