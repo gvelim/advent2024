@@ -1,66 +1,56 @@
-use std::{collections::HashMap, num::ParseIntError, str::FromStr};
+use std::{collections::HashMap, fmt::Debug, num::ParseIntError, str::FromStr};
+use crate::order::Page;
+use super::entry::PrintEntry;
 
-use crate::order::{OrderRules, Page};
-
-pub type Position = usize;
-
-#[derive(Debug, PartialEq)]
-pub(crate) struct Update {
-    // store (Key: Number, Val: Index)
+pub(crate) struct ManualUpdates {
+    // store (Key: Number, Val: {Page,Index})
     // we'll then use the rules to validate Xi < Yi
-    list: HashMap<Page,Position>
+    list: HashMap<Page,PrintEntry>,
+    middle: Page
 }
 
-impl Update {
-    pub fn is_page_order_valid(&self, rules: &OrderRules) -> bool {
-        self.list
-            .iter()
-            // is each page followed by the correct pages ?
-            .all(|(&page, &pos)|{
-                rules
-                    .pages_to_follow(page)
-                    .inspect(|p| print!("{:?} => {:?}, ",(page,pos),p))
-                    .map(|pages| {
-                        // pages that MUST follow in the update
-                        pages
-                            .iter()
-                            // current page position < following page(s) positions
-                            .all(|&follow_page|
-                                // page in the update list ?
-                                self.contains(follow_page)
-                                    .map(|f_pos| f_pos > pos)
-                                    .unwrap_or(true)
-                            )
-                    })
-                    .inspect(|_| println!())
-                    .unwrap_or(true)
-            })
+impl ManualUpdates {
+    pub fn entries(&self) -> impl Iterator<Item = &PrintEntry>  {
+        self.list.values()
     }
-    fn contains(&self, p: Page) -> Option<Position> {
-        self.list.get(&p).cloned()
+    pub fn contains(&self, p: Page) -> Option<&PrintEntry> {
+        self.list.get(&p)
+    }
+    pub(crate) fn middle(&self) -> Page {
+        self.middle
     }
 }
 
-impl FromStr for Update {
+impl FromStr for ManualUpdates {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok( Update {
-            list: s
-                .split(',')
-                .enumerate()
-                .map(|(i,numeric)|
-                    numeric.parse::<usize>().map(|num| (num,i))
+        let list = s
+            .split(',')
+            .enumerate()
+            .map(|(pos,numeric)|
+                numeric.parse::<usize>().map(|page|
+                    (page, PrintEntry{page,pos})
                 )
-                .collect::<Result<_,_>>()?
+            )
+            .collect::<Result<Vec<_>,_>>()?;
+
+        let middle = list.get( list.len()/2 )
+            .map_or(0_usize, |entry| entry.0);
+
+        Ok( ManualUpdates {
+            list: HashMap::from_iter(list),
+            middle
         })
     }
 }
 
-#[test]
-fn test_parse_update() {
-    assert_eq!(
-        "75,47,61,53,29".parse::<Update>().unwrap(),
-        Update { list: HashMap::from([(75,0),(47,1),(61,2),(53,3),(29,4)]) }
-    );
+impl Debug for ManualUpdates {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Updates")?;
+        f.debug_map().entries(
+            self.entries().map(|d| (d.page, d.pos))
+        ).finish()?;
+        Ok(())
+    }
 }
