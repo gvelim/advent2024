@@ -1,4 +1,4 @@
-use std::{fmt::Debug, num::ParseIntError, str::FromStr};
+use std::{cmp, fmt::Debug, num::ParseIntError, str::FromStr};
 use super::order::Page;
 use super::OrderRules;
 
@@ -9,10 +9,14 @@ pub(crate) struct ManualUpdates {
 impl ManualUpdates {
     pub fn make_validator(rules: &OrderRules) ->  impl Fn(&ManualUpdates) -> bool {
         |updates: &ManualUpdates| {
-            let tmp = Self::sort_update(rules)(updates);
-            tmp.entries()
-                .zip(updates.entries())
-                .all(|(a,b)| a == b)
+            updates
+                .entries()
+                .is_sorted_by(|&a,b|
+                    rules
+                        .pages_to_follow(*a)
+                        .map(|set| set.contains(b))
+                        .unwrap_or(false)
+                )
         }
     }
 
