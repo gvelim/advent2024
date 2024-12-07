@@ -1,67 +1,27 @@
-use std::{collections::{HashMap, HashSet}, num::ParseIntError, str::FromStr};
+mod update;
+mod order;
+
+use order::OrderRules;
+use update::Update;
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day5/sample.txt").expect("msg");
     let mut s = input.split("\n\n");
-    let rules = s.next().unwrap();
-    let lists = s.next().unwrap();
+    let rules_str = s.next().unwrap();
+    let lists_str = s.next().unwrap();
 
-    for ele in lists.lines() {
-        println!("{:?}", ele.parse::<Update>())
-    }
+    let rules = rules_str.parse::<OrderRules>().expect("msg");
+    let printer = printer(&rules);
 
-    println!("{:?}", rules.parse::<OrderRules>())
+    let pass = lists_str.lines()
+        .map(|line| line.parse::<Update>().expect("msg"))
+        .take(1)
+        .inspect(|d| println!("{:?}",d))
+        .all(printer);
+    println!("{:?}", if pass {"Pass"} else {"Fail"});
 }
 
-#[derive(Debug)]
-struct OrderRules {
-    rules: HashMap<usize,HashSet<usize>>
-}
 
-impl FromStr for OrderRules {
-    type Err = ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut rules = HashMap::new();
-        for l in s.lines() {
-            let mut s = l.split('|');
-            let x = s.next().unwrap().parse::<usize>()?;
-            let y = s.next().unwrap().parse::<usize>()?;
-            rules
-                .entry(x)
-                .and_modify(|s: &mut HashSet<usize>| {s.insert(y);})
-                .or_insert(HashSet::new())
-                .insert(y);
-        }
-        Ok(OrderRules{rules})
-    }
-}
-
-#[derive(Debug, PartialEq)]
-struct Update {
-    list: HashMap<usize,usize>
-}
-
-impl FromStr for Update {
-    type Err = ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok( Update {
-            list: s
-                .split(',')
-                .enumerate()
-                .map(|(i,numeric)|
-                    numeric.parse::<usize>().map(|num| (num,i))
-                )
-                .collect::<Result<HashMap<usize,usize>,ParseIntError>>()?
-        })
-    }
-}
-
-#[test]
-fn test_parse_update() {
-    assert_eq!(
-        "75,47,61,53,29".parse::<Update>().unwrap(),
-        Update { list: HashMap::from([(75,0),(47,1),(61,2),(53,3),(29,4)]) }
-    );
+fn printer(order: &OrderRules) ->  impl Fn(Update) -> bool {
+    |update: Update| update.is_page_order_valid(order)
 }
