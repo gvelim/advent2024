@@ -1,12 +1,12 @@
 use std::{fmt::Debug, rc::Rc, str::FromStr};
 use super::location::Location;
 
-pub(crate) struct Field<T> {
+pub struct Field<T> {
     cells: Rc<[Rc<[T]>]>
 }
 
 impl<T> Field<T> {
-    pub(crate) fn get_pos(&self, Location(x, y): Location) -> Option<&T>
+    pub fn value_at(&self, Location(x, y): Location) -> Option<&T>
     {
         // use build-in bounds checker of the two arrays
         // out of bounds will result to None
@@ -31,7 +31,7 @@ impl FromStr for Field<char> {
     }
 }
 
-impl<T> Debug for Field<T> where T: Copy + Clone + Debug {
+impl<T> Debug for Field<T> where T: Debug {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (p, c) in self.cells.iter().enumerate() {
             if p % self.width() == 0 { writeln!(f)? }
@@ -51,13 +51,13 @@ mod test {
         let input = std::fs::read_to_string("src/bin/day4/sample.txt").expect("File not found");
         let field = input.parse::<Field<char>>().expect("Doesn't error");
 
-        assert_eq!(field.get_pos(Location(9, 0)), Some(&'M'));
-        assert_eq!(field.get_pos(Location(9, 1)), Some(&'A'));
-        assert_eq!(field.get_pos(Location(0, 8)), Some(&'M'));
-        assert_eq!(field.get_pos(Location(0, 9)), Some(&'M'));
-        assert_eq!(field.get_pos(Location(9, 8)), Some(&'M'));
-        assert_eq!(field.get_pos(Location(9, 9)), Some(&'X'));
-        assert_eq!(field.get_pos(Location(10, 9)), None);
-        assert_eq!(field.get_pos(Location(9, 10)), None);
+        assert_eq!(field.value_at(Location(9, 0)), Some(&'M'));
+        assert_eq!(field.value_at(Location(9, 1)), Some(&'A'));
+        assert_eq!(field.value_at(Location(0, 8)), Some(&'M'));
+        assert_eq!(field.value_at(Location(0, 9)), Some(&'M'));
+        assert_eq!(field.value_at(Location(9, 8)), Some(&'M'));
+        assert_eq!(field.value_at(Location(9, 9)), Some(&'X'));
+        assert_eq!(field.value_at(Location(10, 9)), None);
+        assert_eq!(field.value_at(Location(9, 10)), None);
     }
 }

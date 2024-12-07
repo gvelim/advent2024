@@ -1,10 +1,6 @@
-
-mod location;
-mod field;
-
 use std::time::Instant;
-use field::Field;
-use location::{Location,Direction};
+use advent2024::field::Field;
+use advent2024::location::{Location,Direction};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day4/input.txt").expect("File not found");
@@ -64,7 +60,7 @@ fn is_word_matched(field: &Field<char>, word: &str, start: Location, dir: Direct
             .move_relative((dir.0 * i as isize, dir.1 * i as isize))
             .map(|p| field
                 // match the value in position with input's character
-                .get_pos(p)
+                .value_at(p)
                 .map(|&val| val == c)
                 .unwrap_or(false)
             ).unwrap_or(false)
