@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use advent2024::field::Field;
@@ -11,10 +11,46 @@ fn main() {
     let lab = Rc::new(input.parse::<Lab>().expect("Field parse err"));
 
     let (pos,dir) = find_guard(&lab, &['^','>','v','<']).expect("there is no Lab Guard !!");
-    let mut path  = Guard{lab,pos,dir}.collect::<HashSet<Location>>();
-    path.insert(pos);
-    println!("Part 1: Guard visited {:?} unique locations", path.len());
-    assert_eq!(path.len(),5534)
+    let mut unique_locations  = Guard{lab: lab.clone(),pos,dir}
+        .map(|(l,_)| l)
+        .collect::<HashSet<Location>>();
+    unique_locations.insert(pos);
+    println!("Part 1: Guard visited {:?} unique locations", unique_locations.len());
+    // assert_eq!(unique_locations.len(),5534);
+    // assert_eq!(unique_locations.len(),41);
+
+    let mut history = HashMap::new();
+    history.insert(pos, dir);
+    let obs_count = Guard{lab:lab.clone(),pos,dir}
+        .filter_map(|(l, d)| {
+            if let Some(&h) = history.get(&l) {
+                if turn_cw(d) == Some(h) { return Some((l,d)) }
+            } else {
+                let mut cur = l;
+                while let Some(cl) = {
+                    cur.move_relative(turn_cw(d).unwrap())
+                        .filter(|&cl| lab.in_bounds(cl))
+                } {
+                    if let Some(&cd) = history.get(&cl) {
+                        if turn_cw(d) == Some(cd) {
+                            return Some((l,d))
+                        }
+                    }
+                    cur = cl;
+                }
+            }
+            history.entry(l).or_insert(d);
+            None
+        })
+        .filter_map(|(l,d)|
+            if pos != l { Some(l.move_relative(d)) } else { None }
+        )
+        .inspect(|l| println!("Obstacle {:?}",l))
+        .count();
+
+    println!("Part 2: There are {:?} loop obstacles", obs_count);
+    // assert_eq!(obs_count,5534);
+    // assert_eq!(obs_count,6);
 }
 
 #[derive(Debug)]
@@ -25,7 +61,7 @@ struct Guard {
 }
 
 impl Iterator for Guard {
-    type Item = Location;
+    type Item = (Location, DirVector);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.pos
@@ -41,14 +77,17 @@ impl Iterator for Guard {
                     })
             )
             // .inspect(|l| println!("{l:?}"))
-            .inspect(|&pos| self.pos = pos)
+            .map(|pos| {
+                self.pos = pos;
+                (pos, self.dir)
+            })
     }
 }
 
-fn find_guard(lab: &Lab, guard: &[char]) -> Option<(Location, DirVector)> {
+fn find_guard(lab: &Lab, token: &[char]) -> Option<(Location, DirVector)> {
     lab
         .iter()
-        .position(|c| guard.contains(c))
+        .position(|c| token.contains(c))
         .map(|idx| {
             let y = idx / lab.height();
             let loc = Location(idx - y * lab.height(), y );
@@ -72,7 +111,7 @@ fn test_find_guard() -> Result<(),()> {
     ];
     for (l, out) in dt.into_iter() {
         let lab = l.parse::<Lab>()?;
-        assert_eq!(find_guard(&lab,&['^','>','v','<']), out, "{:#?}, {:#?}",lab, out);
+        assert_eq!(find_guard(&lab, &['^','>','v','<']), out, "{:#?}, {:#?}",lab, out);
     }
     Ok(())
 }

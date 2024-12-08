@@ -14,6 +14,9 @@ impl<T> Field<T> {
             .get(y)
             .and_then(|w| w.get(x))
     }
+    pub fn in_bounds(&self, l: Location) -> bool {
+        l.0 < self.width() && l.1 < self.height()
+    }
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.cells
             .iter()
