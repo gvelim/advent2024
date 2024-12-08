@@ -1,6 +1,6 @@
 use std::time::Instant;
 use advent2024::field::Field;
-use advent2024::location::{Location,Direction};
+use advent2024::location::{Location,DirVector};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day4/input.txt").expect("File not found");
@@ -40,7 +40,7 @@ fn main() {
     assert_eq!(1965,sum);
 }
 
-fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [Direction]) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,Direction)> + 'a> {
+fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [DirVector]) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,DirVector)> + 'a> {
     // return a function that takes a world and location
     // and performs a scan on field and set of directions that has be constructed with
     move |word: &'a str, pos: Location| {
@@ -53,7 +53,7 @@ fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [Direction]) -> impl 
     }
 }
 
-fn is_word_matched(field: &Field<char>, word: &str, start: Location, dir: Direction) -> bool {
+fn is_word_matched(field: &Field<char>, word: &str, start: Location, dir: DirVector) -> bool {
     word.char_indices()
         .all(|(i,c)| start
             // calculate new location based on (a) current index (b) starting position & (c) direction

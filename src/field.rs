@@ -1,4 +1,4 @@
-use std::{fmt::Debug, rc::Rc, str::FromStr};
+use std::{fmt::{Debug, Display}, rc::Rc, str::FromStr};
 use super::location::Location;
 
 pub struct Field<T> {
@@ -13,6 +13,11 @@ impl<T> Field<T> {
         self.cells
             .get(y)
             .and_then(|w| w.get(x))
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.cells
+            .iter()
+            .flat_map(|c| c.iter())
     }
     pub fn width(&self) -> usize { self.cells.first().map(|v| v.len()).unwrap_or(0) }
     pub fn height(&self) -> usize { self.cells.len() }
@@ -31,11 +36,11 @@ impl FromStr for Field<char> {
     }
 }
 
-impl<T> Debug for Field<T> where T: Debug {
+impl<T> Debug for Field<T> where T: Debug + Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (p, c) in self.cells.iter().enumerate() {
-            if p % self.width() == 0 { writeln!(f)? }
-            write!(f, "{:?}", c)?;
+        for c in self.cells.iter() {
+            writeln!(f)?;
+            for c in c.iter() { write!(f,"{:2}", c)? };
         }
         writeln!(f)?;
         Ok(())

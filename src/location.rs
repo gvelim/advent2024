@@ -1,12 +1,22 @@
 
-pub type Direction = (isize,isize);
+pub type DirVector = (isize,isize);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+pub fn turn_cw(dir: DirVector) -> Option<DirVector> {
+    match dir {
+        (1,0) => Some((0,1)),
+        (0,1) => Some((-1,0)),
+        (-1,0) => Some((0,-1)),
+        (0,-1) => Some((1,0)),
+        _ => None
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Location(pub usize, pub usize);
 
 impl Location {
     // get a new location given current location + delta vector
-    pub fn move_relative(&self, distance: Direction) -> Option<Location> {
+    pub fn move_relative(&self, distance: DirVector) -> Option<Location> {
         let x = self.0.checked_add_signed(distance.0);
         let y = self.1.checked_add_signed(distance.1);
         match (x, y) {
