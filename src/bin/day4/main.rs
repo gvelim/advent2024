@@ -60,7 +60,7 @@ fn is_word_matched(field: &Field<char>, word: &str, start: Location, dir: DirVec
             .move_relative((dir.0 * i as isize, dir.1 * i as isize))
             .map(|p| field
                 // match the value in position with input's character
-                .value_at(p)
+                .get(p)
                 .map(|&val| val == c)
                 .unwrap_or(false)
             ).unwrap_or(false)

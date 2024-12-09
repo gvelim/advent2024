@@ -1,13 +1,54 @@
 
 pub type DirVector = (isize,isize);
 
-pub fn turn_cw(dir: DirVector) -> Option<DirVector> {
-    match dir {
-        (1,0) => Some((0,1)),
-        (0,1) => Some((-1,0)),
-        (-1,0) => Some((0,-1)),
-        (0,-1) => Some((1,0)),
-        _ => None
+pub fn turn_cw(d: DirVector) -> DirVector {
+    Direction::from(d).turn_cw().to_cartesian()
+}
+
+pub fn turn_ccw(d: DirVector) -> DirVector {
+    Direction::from(d).turn_ccw().to_cartesian()
+}
+
+pub enum Direction {
+  Left, Down, Right, Up
+}
+
+impl Direction {
+    pub fn to_cartesian(&self) -> DirVector {
+        match self {
+            Direction::Left => (-1,0),
+            Direction::Down => (0,1),
+            Direction::Right => (1,0),
+            Direction::Up => (0,-1),
+        }
+    }
+    pub fn turn_cw(&self) -> Direction {
+        match self {
+            Direction::Right => Direction::Down,
+            Direction::Down => Direction::Left,
+            Direction::Left => Direction::Up,
+            Direction::Up => Direction::Right,
+        }
+    }
+    pub fn turn_ccw(&self) -> Direction {
+        match self {
+            Direction::Down => Direction::Right,
+            Direction::Left => Direction::Down,
+            Direction::Up => Direction::Left,
+            Direction::Right => Direction::Up,
+        }
+    }
+}
+
+impl From<DirVector> for Direction {
+    fn from(value: (isize,isize)) -> Self {
+        match value {
+            (-1,0) => Direction::Left ,
+             (0,1) => Direction::Down,
+             (1,0) => Direction::Right,
+             (0,-1) => Direction::Up ,
+             _ => panic!("{value:?} is not any of (-1,0) (0,-1) (1,0) (0,1)")
+        }
     }
 }
 
@@ -23,6 +64,9 @@ impl Location {
             (Some(x), Some(y)) => Some(Location(x, y)),
             _ => None
         }
+    }
+    pub fn next(&self, distance: Direction) -> Option<Location> {
+        self.move_relative(distance.to_cartesian())
     }
 }
 
