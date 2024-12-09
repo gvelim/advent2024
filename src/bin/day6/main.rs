@@ -42,14 +42,15 @@ fn main() {
             history.entry(l).or_insert(d);
             None
         })
-        .filter_map(|(l,d)|
-            if pos != l { Some(l.move_relative(d)) } else { None }
-        )
+        .filter_map(|(l,d)| {
+            l.move_relative(d)
+                .filter(|&nl| nl != l )
+        })
         .inspect(|l| println!("Obstacle {:?}",l))
-        .count();
+        .collect::<HashSet<_>>();
 
-    println!("Part 2: There are {:?} loop obstacles", obs_count);
-    // assert_eq!(obs_count,5534);
+    println!("Part 2: There are {:?} loop obstacles", obs_count.len());
+    // assert_eq!(obs_count.len(),5534);
     // assert_eq!(obs_count,6);
 }
 
