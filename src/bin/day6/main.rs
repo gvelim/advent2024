@@ -5,7 +5,7 @@ use std::{collections::{HashMap,HashSet}, rc::Rc};
 use advent2024::location::*;
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day6/sample.txt").expect("msg");
+    let input = std::fs::read_to_string("src/bin/day6/input.txt").expect("msg");
     let lab = Rc::new(input.parse::<Lab>().expect("Field parse err"));
 
     let (pos,dir) = find_guard(&lab, &['^','>','v','<']).expect("there is no Lab Guard !!");
