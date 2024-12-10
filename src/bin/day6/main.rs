@@ -18,30 +18,10 @@ fn main() {
     // assert_eq!(unique_locations.len(),5534);
     // assert_eq!(unique_locations.len(),41);
 
-    let mut history = HashMap::new();
-    history.insert(pos, dir);
     let obs_count = Guard{lab:lab.clone(),pos,dir}
         .filter_map(|(l, d)| {
-            history.entry(l).or_insert(d);
-            // send a Guard off to your right; the Guard will either exit the lab or hit a loop condition
-            Guard{lab:lab.clone(),pos:l,dir:turn_cw(d)}
-                // carry on until we've entered a loop, that is, we are back where we've started
-                .take_while(|&(nl,nd)| nl != l && nd != d )
-                // obstacle position conditions
-                .filter(|&(nl,nd)|
-                    // we've been here before and...
-                    if let Some(&before) = history.get(&nl) {
-                        match lab.peek(nl, nd) {
-                            // ... going in a clock-wise direction while we are facing a #
-                            Some(&'#') if before == turn_cw(nd) => true,
-                            // ... going in the same direction vector
-                            Some(_) if before == nd => true,
-                            _ => false,
-                        }
-                    } else { false }
-                )
-                .next()
-                .map(|_| (l,d))
+            is_loop_detected(Guard{lab:lab.clone(),pos:l,dir:turn_cw(d)})
+                .then_some((l,d))
         })
         .filter_map(|(l,d)|
             l.move_relative(d)
@@ -53,16 +33,17 @@ fn main() {
     // assert_eq!(obs_count.len(),5534);
     // assert_eq!(obs_count,6);
 
-    print_all(&lab, &unique_locations, &obs_count);
+    print_all(&lab, &unique_locations, Some(&obs_count));
 }
 
-fn print_all(lab:&Lab, path: &HashMap<Location,DirVector>, obst: &HashSet<Location>) {
+fn print_all(lab: &Lab, path: &HashMap<Location,DirVector>, obst: Option<&HashSet<Location>>) {
+    println!();
     (0..lab.height()).for_each(|y| {
         (0..lab.width()).for_each(|x| {
             let loc = Location(x,y);
-            let c = match (lab.get(loc), path.get(&loc), obst.contains(&loc)) {
+            let c = match (lab.get(loc), path.get(&loc), obst.map(|o| o.contains(&loc))) {
                 (None, _, _) => unreachable!(),
-                (_, _, true) => 'O',
+                (_, _, Some(true)) => 'O',
                 (_, Some(&d), _) => ddv(d),
                 (Some(&c), _, _) => c,
             };
@@ -82,6 +63,26 @@ fn ddv(d:DirVector)-> char {
     }
 }
 
+fn is_loop_detected(mut guard: Guard) -> bool {
+    let mut history = HashMap::new();
+    let (pos,dir) = (guard.pos, guard.dir);
+    history.entry(pos).or_insert(dir);
+    let ok = !guard
+        .all(|(nl,nd)| {
+            let found =
+                if nl == pos  {
+                    // print!("{:?}",(nl,nd));
+                    Some(&dir) == history.get(&nl)
+                } else {
+                    false
+                };
+            history.entry(nl).or_insert(nd);
+            !found
+            });
+    println!("> {:?} loop found", if ok {""} else { "No"});
+    print_all(&guard.lab, &history, None);
+    ok
+}
 
 #[derive(Debug)]
 struct Guard {
@@ -94,23 +95,16 @@ impl Iterator for Guard {
     type Item = (Location, DirVector);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.pos
-            .move_relative(self.dir)
-            .and_then(|loc|
-                self.lab.get(loc)
-                    .and_then(|c|{
-                        self.dir = match c {
-                            &'#' => turn_cw(self.dir),
-                            _ => self.dir
-                        };
-                        self.pos.move_relative(self.dir)
-                    })
-            )
-            // .inspect(|l| println!("{l:?}"))
+        while let Some(&'#') = self.lab.peek(self.pos, self.dir) {
+            self.dir = turn_cw(self.dir);
+        }
+        self.pos.move_relative(self.dir)
+            .filter(|&p| self.lab.within_bounds(p))
             .map(|pos| {
                 self.pos = pos;
                 (pos, self.dir)
             })
+
     }
 }
 
