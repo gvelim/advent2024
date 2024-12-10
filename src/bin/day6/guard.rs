@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use advent2024::field::Field;
 use advent2024::location::*;
 
@@ -28,23 +26,6 @@ impl Iterator for Guard<'_> {
                 (pos, self.dir)
             })
     }
-}
-
-pub fn is_loop_detected(mut guard: Guard) -> bool {
-    use std::collections::HashMap;
-
-    let mut history = HashMap::new();
-    let (pos,dir) = (guard.pos, guard.dir);
-
-    // register starting position
-    history.entry(pos).or_insert(dir);
-    // carry on until we fall off the lab
-    // or we step onto a position already visited in the same direction
-    !guard.all(|(nl,nd)| {
-        let found = history.get(&nl).is_some_and(|&pd| nd == pd);
-        history.entry(nl).or_insert(nd);
-        !found
-    })
 }
 
 pub fn find_guard(lab: &Lab, token: &[char]) -> Option<(Location, DirVector)> {

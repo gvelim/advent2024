@@ -11,24 +11,33 @@ fn main() {
     let (pos,dir) = find_guard(&lab, &['^','>','v','<']).expect("there is no Lab Guard !!");
 
     let t = Instant::now();
-    let mut unique_locations  = Guard{lab:&lab,pos,dir}.collect::<HashMap<_,_>>();
+    let mut unique_locations = Guard{lab:&lab,pos,dir}.collect::<HashMap<_,_>>();
     unique_locations.insert(pos,dir);
     println!("Part 1: Guard visited {:?} unique locations - {:?}", unique_locations.len(), t.elapsed());
     assert_eq!(unique_locations.len(),5534);
 
     let t = Instant::now();
-    let obs_count = unique_locations.into_iter()
+    let mut path = HashMap::new();
+    let obstacles = unique_locations
+        .iter()
         .filter(|&(l, _)| {
-            lab.get_mut(l).map(|c| *c = '#');
-            let is_loop = is_loop_detected(Guard{lab:&lab,pos,dir});
-            lab.get_mut(l).map(|c| *c = '.');
+            path.clear();
+            *lab.get_mut(*l).unwrap() = '#';
+            // carry on until we fall off the lab
+            // or we step onto a position already visited in the same direction
+            let is_loop = !Guard{lab:&lab,pos,dir}
+                .all(|(nl,nd)| {
+                    let found = path.get(&nl).is_some_and(|&pd| nd == pd);
+                    path.entry(nl).or_insert(nd);
+                    !found
+                });
+            *lab.get_mut(*l).unwrap() = '.';
             is_loop
         })
         .count();
 
-    println!("Part 2: There are {:?} loop obstacles - {:?}", obs_count, t.elapsed());
-    assert_eq!(obs_count,2262);
-    // assert_eq!(obs_count,6);
+    println!("Part 2: There are {:?} loop obstacles - {:?}", obstacles, t.elapsed());
+    assert_eq!(obstacles,2262);
 }
 
 fn print_all(start: Location, guard: &Guard, path: &HashMap<Location,DirVector>, obst: Option<&Vec<Location>>) {
@@ -41,15 +50,11 @@ fn print_all(start: Location, guard: &Guard, path: &HashMap<Location,DirVector>,
             let c = match (guard.lab.get(loc), path.get(&loc), obst.map(|o| o.contains(&loc))) {
                 (None, _, _) => unreachable!(),
                 (_, _, Some(true)) => 'O',
-                (_, Some(&d), _) => ddv(d),
+                (_, Some(&d), _) => dirvector_to_char(d),
                 (Some(&c), _, _) => c,
             };
             print!("{c:2}");
         });
         println!();
     });
-}
-
-fn ddv(d:DirVector)-> char {
-    match d { (1,0) => '→', (-1,0) => '←', (0,-1) => '↑', (0,1) => '↓', _ => unreachable!() }
 }

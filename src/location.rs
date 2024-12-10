@@ -9,6 +9,10 @@ pub fn turn_ccw(d: DirVector) -> DirVector {
     Direction::from(d).turn_ccw().to_cartesian()
 }
 
+pub fn dirvector_to_char(d:DirVector)-> char {
+    Direction::from(d).into()
+}
+
 pub enum Direction {
   Left, Down, Right, Up
 }
@@ -37,6 +41,12 @@ impl Direction {
             Direction::Up => Direction::Left,
             Direction::Right => Direction::Up,
         }
+    }
+}
+
+impl From<Direction> for char{
+    fn from(val: Direction) -> Self {
+        match val.to_cartesian() { (1,0) => '→', (-1,0) => '←', (0,-1) => '↑', (0,1) => '↓', _ => unreachable!() }
     }
 }
 
