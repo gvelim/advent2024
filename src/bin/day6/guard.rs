@@ -38,7 +38,8 @@ pub fn is_loop_detected(mut guard: Guard) -> bool {
 
     // register starting position
     history.entry(pos).or_insert(dir);
-    // carry on until we fall off the lab or go back to our starting position with same direction
+    // carry on until we fall off the lab
+    // or we step onto a position already visited in the same direction
     !guard.all(|(nl,nd)| {
         let found = history.get(&nl).is_some_and(|&pd| nd == pd);
         history.entry(nl).or_insert(nd);
