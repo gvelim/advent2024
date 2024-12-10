@@ -6,13 +6,13 @@ use advent2024::location::*;
 pub type Lab = Field<char>;
 
 #[derive(Debug)]
-pub(crate) struct Guard {
-    pub lab: Rc<Lab>,
+pub(crate) struct Guard<'a> {
+    pub lab: &'a Lab,
     pub dir: DirVector,
     pub pos: Location
 }
 
-impl Iterator for Guard {
+impl Iterator for Guard<'_> {
     type Item = (Location, DirVector);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -38,8 +38,6 @@ pub fn is_loop_detected(mut guard: Guard) -> bool {
 
     // register starting position
     history.entry(pos).or_insert(dir);
-    // ... and turn right, as if we have an obstacle in front
-    guard.dir = turn_cw(guard.dir);
     // carry on until we fall off the lab or go back to our starting position with same direction
     !guard.all(|(nl,nd)| {
         let found = history.get(&nl).is_some_and(|&pd| nd == pd);

@@ -41,7 +41,7 @@ impl<T> Field<T> {
     }
     pub fn new(w: usize, h: usize, d: T) -> Field<T> where T: Clone {
         Field {
-            cells: vec![vec![d;w].into();h]
+            cells: vec![vec![d;w];h]
         }
     }
 }
