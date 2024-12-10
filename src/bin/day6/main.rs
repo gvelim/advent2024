@@ -7,7 +7,7 @@ use advent2024::location::*;
 type Lab = Field<char>;
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day6/sample.txt").expect("msg");
+    let input = std::fs::read_to_string("src/bin/day6/input.txt").expect("msg");
     let lab = Rc::new(input.parse::<Lab>().expect("Field parse err"));
 
     let (pos,dir) = find_guard(&lab, &['^','>','v','<']).expect("there is no Lab Guard !!");
@@ -20,7 +20,7 @@ fn main() {
 
     let obs_count = Guard{lab:lab.clone(),pos,dir}
         .filter_map(|(l, d)| {
-            is_loop_detected(Guard{lab:lab.clone(),pos:l,dir:turn_cw(d)})
+            is_loop_detected(Guard{lab:lab.clone(),pos:l,dir:d})
                 .then_some((l,d))
         })
         .filter_map(|(l,d)|
@@ -67,20 +67,20 @@ fn is_loop_detected(mut guard: Guard) -> bool {
     let mut history = HashMap::new();
     let (pos,dir) = (guard.pos, guard.dir);
     history.entry(pos).or_insert(dir);
+    guard.dir = turn_cw(guard.dir);
     let ok = !guard
         .all(|(nl,nd)| {
             let found =
-                if nl == pos  {
-                    // print!("{:?}",(nl,nd));
-                    Some(&dir) == history.get(&nl)
+                if nl == pos {
+                    dir == nd
                 } else {
-                    false
+                    history.get(&nl).is_some_and(|&pd| nd == pd)
                 };
             history.entry(nl).or_insert(nd);
             !found
-            });
-    println!("> {:?} loop found", if ok {""} else { "No"});
-    print_all(&guard.lab, &history, None);
+        });
+    // println!("> {:?} loop found", if ok {""} else { "No"});
+    // print_all(&guard.lab, &history, None);
     ok
 }
 
