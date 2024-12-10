@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Display}, rc::Rc, str::FromStr};
+use std::{fmt::{Debug, Display}, str::FromStr};
 use crate::location::DirVector;
 
 use super::location::Location;

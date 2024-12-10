@@ -16,43 +16,42 @@ impl Iterator for Guard {
     type Item = (Location, DirVector);
 
     fn next(&mut self) -> Option<Self::Item> {
+        // turn until you find a way fwd
         while let Some(&'#') = self.lab.peek(self.pos, self.dir) {
             self.dir = turn_cw(self.dir);
         }
+        // move next position as long as it is within bounds
         self.pos.move_relative(self.dir)
             .filter(|&p| self.lab.within_bounds(p))
             .map(|pos| {
                 self.pos = pos;
                 (pos, self.dir)
             })
-
     }
 }
-
 
 pub fn is_loop_detected(mut guard: Guard) -> bool {
     use std::collections::HashMap;
 
     let mut history = HashMap::new();
     let (pos,dir) = (guard.pos, guard.dir);
+
+    // register starting position
     history.entry(pos).or_insert(dir);
+    // ... and turn right, as if we have an obstacle in front
     guard.dir = turn_cw(guard.dir);
-    let ok = !guard
-        .all(|(nl,nd)| {
-            let found = history.get(&nl).is_some_and(|&pd| nd == pd);
-            history.entry(nl).or_insert(nd);
-            !found
-        });
-    // println!("> {:?} loop found", if ok {""} else { "No"});
-    // print_all(&guard.lab, &history, None);
-    ok
+    // carry on until we fall off the lab or go back to our starting position with same direction
+    !guard.all(|(nl,nd)| {
+        let found = history.get(&nl).is_some_and(|&pd| nd == pd);
+        history.entry(nl).or_insert(nd);
+        !found
+    })
 }
 
 pub fn find_guard(lab: &Lab, token: &[char]) -> Option<(Location, DirVector)> {
     lab
         .iter()
         .position(|c| token.contains(c))
-        .inspect(|p| println!("pos: {:?}, {:?}",p, lab))
         .map(|idx| {
             let loc = lab.index_to_cartesian(idx);
             (
