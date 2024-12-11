@@ -1,7 +1,7 @@
 mod guard;
 
 use crate::guard::*;
-use std::{collections::HashMap, time::Instant};
+use std::{collections::{HashMap, HashSet}, time::Instant};
 use advent2024::location::*;
 
 fn main() {
@@ -23,16 +23,16 @@ fn main() {
         .filter(|&(l, _)| {
             path.clear();
             *lab.get_mut(*l).unwrap() = '#';
-            // carry on until we fall off the lab
-            // or we step onto a position already visited in the same direction
-            let is_loop = !Guard{lab:&lab,pos,dir}
-                .all(|(nl,nd)| {
-                    let found = path.get(&nl).is_some_and(|&pd| nd == pd);
+            // carry on until we either (a) fall off the lab
+            let in_loop = Guard{lab:&lab,pos,dir}
+                .any(|(nl,nd)| {
+                    // or (b) we step onto a position already visited from the same direction
+                    let in_loop = path.get(&nl).is_some_and(|&pd| nd == pd);
                     path.entry(nl).or_insert(nd);
-                    !found
+                    in_loop
                 });
             *lab.get_mut(*l).unwrap() = '.';
-            is_loop
+            in_loop
         })
         .count();
 
@@ -45,8 +45,8 @@ fn print_all(start: Location, guard: &Guard, path: &HashMap<Location,DirVector>,
     (0..guard.lab.height()).for_each(|y| {
         (0..guard.lab.width()).for_each(|x| {
             let loc = Location(x,y);
-            if loc == guard.pos { print!("😀"); return; };
             if loc == start { print!("🚀"); return; };
+            if loc == guard.pos { print!("🚷"); return; };
             let c = match (guard.lab.get(loc), path.get(&loc), obst.map(|o| o.contains(&loc))) {
                 (None, _, _) => unreachable!(),
                 (_, _, Some(true)) => 'O',
