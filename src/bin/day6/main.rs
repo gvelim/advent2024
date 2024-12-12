@@ -1,7 +1,7 @@
 mod guard;
 
 use crate::guard::*;
-use std::{collections::{HashMap, HashSet}, time::Instant};
+use std::{collections::HashMap, time::Instant};
 use advent2024::location::*;
 
 fn main() {
