@@ -1,20 +1,25 @@
+#![feature(iter_map_windows)]
+
 use std::str::FromStr;
 use nom::{
-    bytes::complete::tag, character::complete::{space0, space1, u64}, combinator::map, multi::separated_list1, sequence::{separated_pair, tuple}, IResult, Parser
+    bytes::complete::tag, character::complete::{space0, space1, u64}, combinator::map, multi::separated_list1, sequence::{separated_pair, tuple}, IResult
 };
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day7/input.txt").expect("msg");
-
-    let sum = input.lines()
+    let equations = input.lines()
         .map(|line| line.parse::<Equation>().unwrap())
-        .inspect(|eq| print!("Eq:{:?} => ", eq))
-        .filter(|eq| if eq.solver() != 0 { true } else { println!("Invalid"); false })
-        .inspect(|eq| println!("Valid"))
-        .map(|eq| eq.result)
-        .sum::<u64>();
+        .collect::<Vec<_>>();
 
+    let sum = equations.iter()//.skip(4).take(1)
+        .inspect(|eq| print!("{:15} = {:?} ",eq.result,eq.coeff))
+        .filter_map(|eq| {
+            let res = eq.solver();
+            if res.is_none() { println!("✕"); None } else { println!("✓"); res }
+        })
+        .sum::<u64>();
     println!("Part 1: total calibration result is {sum}");
+    // assert_eq!(12553187650171, sum);
 }
 
 #[derive(Debug)]
@@ -24,23 +29,29 @@ struct Equation {
 }
 
 impl Equation {
-    fn solver(&self) -> u64 {
+    fn solver(&self) -> Option<u64> {
         let mut tmp = self.coeff.clone();
         tmp.reverse();
         Self::solve(self.result, &tmp)
     }
-    fn solve(total: u64, coeff: &[u64]) -> u64 {
-        // println!("{:?}",(total,&coeff));
-        if coeff.len() ==1 {
-            return coeff[0]
-        }
-        let res_1 = if total >= coeff[0] { coeff[0] + Self::solve(total - coeff[0], &coeff[1..]) } else { 0 };
-        let res_2 = coeff[0] * Self::solve(total / coeff[0], &coeff[1..]);
-        match (res_1 == total, res_2 == total) {
-            (true, true) => res_1,
-            (true, false) => res_1,
-            (false, true) => res_2,
-            (false, false) => 0,
+    fn solve(total: u64, coeff: &[u64]) -> Option<u64> {
+        fn ct(a:u64, b:u64) -> u64 { format!("{}{}",a,b).parse::<u64>().unwrap() }
+
+        if coeff.len() == 1 { return Some(coeff[0]) }
+
+        let res_1 = Self::solve(total / coeff[0], &coeff[1..]).map(|s| s * coeff[0]);
+        let res_2 = if total >= coeff[0] {
+            Self::solve(total - coeff[0], &coeff[1..]).map(|s| s + coeff[0])
+        } else { None };
+        let res_3 = Self::solve(total, &coeff[1..]).map(|s| ct(s,coeff[0]));
+        let res_4 = Self::solve((total - coeff[0])/10, &coeff[1..]).map(|s| ct(s,coeff[0]));
+
+        match (res_1 == Some(total), res_2 == Some(total), res_3 == Some(total), res_4 == Some(total)) {
+            (true, _, _, _) => res_1,
+            (_, true, _, _) => res_2,
+            (_, _, true, _) => res_3,
+            (_, _, _, true) => res_4,
+            _ => None,
         }
     }
 }
