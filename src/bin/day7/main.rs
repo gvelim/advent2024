@@ -43,14 +43,14 @@ impl Equation {
         let res_2 = if total >= coeff[0] {
             Self::solve(total - coeff[0], &coeff[1..]).map(|s| s + coeff[0])
         } else { None };
-        let res_3 = Self::solve(total, &coeff[1..]).map(|s| ct(s,coeff[0]));
-        let res_4 = Self::solve((total - coeff[0])/10, &coeff[1..]).map(|s| ct(s,coeff[0]));
+        let res_3 = if total >= coeff[0] {
+            Self::solve((total - coeff[0])/10, &coeff[1..]).map(|s| ct(s,coeff[0]))
+        } else { None };
 
-        match (res_1 == Some(total), res_2 == Some(total), res_3 == Some(total), res_4 == Some(total)) {
-            (true, _, _, _) => res_1,
-            (_, true, _, _) => res_2,
-            (_, _, true, _) => res_3,
-            (_, _, _, true) => res_4,
+        match (res_1 == Some(total), res_2 == Some(total), res_3 == Some(total)) {
+            (true, _, _) => res_1,
+            (_, true, _) => res_2,
+            (_, _, true) => res_3,
             _ => None,
         }
     }
