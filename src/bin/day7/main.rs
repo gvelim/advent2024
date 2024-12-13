@@ -44,7 +44,7 @@ impl Equation {
             Self::solve(total - coeff[0], &coeff[1..]).map(|s| s + coeff[0])
         } else { None };
         let res_3 = if total >= coeff[0] {
-            Self::solve((total - coeff[0])/10, &coeff[1..]).map(|s| ct(s,coeff[0]))
+            Self::solve((total - coeff[0])/10u64.pow(coeff[0].ilog10()+1), &coeff[1..]).map(|s| ct(s, coeff[0]))
         } else { None };
 
         match (res_1 == Some(total), res_2 == Some(total), res_3 == Some(total)) {
