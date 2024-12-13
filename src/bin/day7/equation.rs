@@ -74,6 +74,6 @@ mod test {
         assert!("83 :17 5".parse::<Equation>().is_ok());
         assert!("83   :    17     5".parse::<Equation>().is_ok());
         assert!("83 : ".parse::<Equation>().is_err());
-        assert!("363816188802: 5 601 3 603 2 2 93 6 3 5".parse::<Equation>().is_err());
+        assert!("363816188802: 5 601 3 603 2 2 93 6 3 5".parse::<Equation>().is_ok());
     }
 }
