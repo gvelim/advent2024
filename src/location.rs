@@ -1,3 +1,4 @@
+use std::ops::Sub;
 
 pub type DirVector = (isize,isize);
 
@@ -62,7 +63,7 @@ impl From<DirVector> for Direction {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Location(pub usize, pub usize);
 
 impl Location {
@@ -77,6 +78,22 @@ impl Location {
     }
     pub fn next(&self, distance: Direction) -> Option<Location> {
         self.move_relative(distance.to_cartesian())
+    }
+    pub fn distance(&self, loc: &Location) -> (usize,usize) {
+        (self.0.abs_diff(loc.0), self.1.abs_diff(loc.1))
+    }
+}
+
+impl Sub for Location {
+    type Output = Option<Location>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self.0.checked_sub(rhs.0), self.1.checked_sub(rhs.1)) {
+            (None, None) => None,
+            (None, Some(_)) => None,
+            (Some(_), None) => None,
+            (Some(x), Some(y)) => Some(Location(x,y)),
+        }
     }
 }
 
