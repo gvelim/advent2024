@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, rc::Rc};
 use nom::{
     bytes::complete::tag,
     character::complete::{space0, space1, u64},
@@ -9,26 +9,27 @@ use nom::{
 #[derive(Debug)]
 pub(crate) struct Equation {
     result: u64,
-    coeff: Vec<u64>
+    coeff: Rc<[u64]>
 }
 
 impl Equation {
     pub(crate) fn solver(&self, cop: bool) -> Option<u64> {
-        let mut tmp = self.coeff.clone();
-        tmp.reverse();
-        Self::solve(self.result, &tmp, cop)
+        Self::solve(self.result, &self.coeff, cop)
     }
+
     fn solve(total: u64, coeff: &[u64],cop: bool) -> Option<u64> {
         fn ct(a:u64, b:u64) -> u64 { format!("{}{}",a,b).parse::<u64>().unwrap() }
 
-        if coeff.len() == 1 { return Some(coeff[0]) }
+        let idx = coeff.len() - 1;
 
-        let res_1 = Self::solve(total / coeff[0], &coeff[1..],cop).map(|s| s * coeff[0]);
+        if idx == 0 { return Some(coeff[idx]) }
+
+        let res_1 = Self::solve(total / coeff[idx], &coeff[..idx],cop).map(|s| s * coeff[idx]);
         let res_2 = if total >= coeff[0] {
-            Self::solve(total - coeff[0], &coeff[1..],cop).map(|s| s + coeff[0])
+            Self::solve(total - coeff[idx], &coeff[..idx],cop).map(|s| s + coeff[idx])
         } else { None };
         let res_3 = if cop && total >= coeff[0] {
-            Self::solve((total - coeff[0])/10u64.pow(coeff[0].ilog10()+1), &coeff[1..],cop).map(|s| ct(s, coeff[0]))
+            Self::solve((total - coeff[idx])/10u64.pow(coeff[idx].ilog10()+1), &coeff[..idx],cop).map(|s| ct(s, coeff[idx]))
         } else { None };
 
         match (res_1 == Some(total), res_2 == Some(total), res_3 == Some(total)) {
@@ -58,7 +59,7 @@ fn parse_equation(s: &str) -> IResult<&str, Equation> {
         tuple(( space0, tag(":") )),
         tuple(( space0, separated_list1(space1,u64) ))
         ),
-        |(result, (_, coeff))| Equation { result, coeff }
+        |(result, (_, coeff))| Equation { result, coeff: coeff.into() }
     )(s)
 }
 
