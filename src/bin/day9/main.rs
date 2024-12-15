@@ -1,19 +1,16 @@
 use std::iter::repeat;
 
 fn main() {
-    let diskmap = "2333133121414131402";
-    let fs = FileSystem::read_diskmap(diskmap).collect::<String>();
+    let diskmap = std::fs::read_to_string("src/bin/day9/sample.txt").unwrap();
+    // let diskmap = "2333133121414131402".to_string();
+    let fs = FileSystem::read_diskmap(&diskmap).collect::<String>();
 
     println!("00...111...2...333.44.5555.6666.777.888899\n{:?}",fs);
 
-    let mut citer = fs.chars().rev().filter(|c| c != &'.');
-    let comp = FileSystem::read_diskmap(diskmap)
-        .filter_map(|c|
-            if c == '.' { citer.next() } else { Some(c) }
-        )
-        .collect::<String>();
+    let comp = FileSystem::compress(&fs).collect::<String>();
+    let chksum = FileSystem::checksum(&comp);
 
-    println!("{:?}",comp);
+    println!("{:?} = {:?}",comp, chksum);
 }
 
 #[derive(Debug)]
@@ -28,6 +25,22 @@ impl FileSystem {
                     if i % 2 == 0 { (inc.next().unwrap() + 48) as char } else {'.'}
                 ).take((c as u8 - 48) as usize)
             })
+    }
+    fn compress(fs: &str) -> impl Iterator<Item = char> {
+        let mut citer = fs.chars().rev().enumerate().filter(|(_, c)| c != &'.').peekable();
+        fs.char_indices()
+            .filter_map(move |(i, c)|{
+                if let Some(&(ci, cc)) = citer.peek() {
+                    if i < fs.len()-ci {
+                    if c == '.' { citer.next(); Some(cc) } else { Some(c) }
+                    } else { None }
+                } else { None }
+            })
+    }
+    fn checksum(comp: &str) -> usize {
+        comp.char_indices()
+            .map(|(i, c)| i * (c as u8 - 48) as usize)
+            .sum::<usize>()
     }
 }
 
