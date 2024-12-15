@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, time::Instant};
+use std::{collections::HashMap, ops::RangeInclusive, str::FromStr, time::Instant};
 use advent2024::{field::Field, location::Location};
 use itertools::*;
 
@@ -7,11 +7,11 @@ fn main() {
     let city = input.parse::<City>().expect("Failed to parse City");
 
     let t = Instant::now();
-    let count = city.antinodes(1).unique().count();
+    let count = city.antinodes(1..=1).unique().count();
     println!("Part 1: {:?} unique locations within the bounds of the map contain an antinode - {:?}",count, t.elapsed());
 
     let t = Instant::now();
-    let count = city.antinodes(10).unique().count();
+    let count = city.antinodes(0..=10).unique().count();
     println!("Part 1: {:?} unique locations within the bounds of the map contain an antinode - {:?}",count, t.elapsed());
 }
 
@@ -37,15 +37,16 @@ struct City {
 }
 
 impl City {
-    pub fn antinodes(&self, resonance:usize) -> impl Iterator<Item = Location> {
+    pub fn antinodes(&self, resonance:RangeInclusive<usize>) -> impl Iterator<Item = Location> {
         self.antennas
             .iter()
             .flat_map(move |(_, a)|
                 a.iter()
                     .tuple_combinations()
-                    // .inspect(|p| print!("{:?}",p))
-                    .flat_map(move |(a,&b)|
-                        (1..=resonance)
+                    .flat_map({
+                        let res = resonance.clone();
+                        move |(a,&b)|
+                        res.clone()
                             .take_while(move |&r|{
                                 let res = a.antinodes(b,r);
                                 match (res[0],res[1]) {
@@ -57,7 +58,7 @@ impl City {
                                 }
                             })
                             .map(move |r| a.antinodes(b,r))
-                    )
+                    })
             )
             .flat_map(|an| an.into_iter())
             .filter_map(|loc|
