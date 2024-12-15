@@ -16,10 +16,9 @@ impl City {
                 .iter()
                 .tuple_combinations()
                 .flat_map({
-                    let res = harmonics.clone();
-                    move |(a, b)| res
-                        .clone()
-                        .map(|harmonic| a.antinodes(*b, harmonic))
+                    let h = harmonics.clone();
+                    move |(a, b)| a
+                        .antinodes(*b, h.clone())
                         .take_while(|&antinodes| {
                             match (antinodes[0], antinodes[1]) {
                                 (_, Some(l)) if self.city.get(l).is_some() => true,
