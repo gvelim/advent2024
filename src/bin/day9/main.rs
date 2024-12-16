@@ -22,7 +22,7 @@ impl FileSystem {
             .flat_map(move |(i, c)| {
                 repeat(
                     if i % 2 == 0 { inc.next().unwrap() } else { -1 }
-                ).take((c as u8 - 48) as usize)
+                ).take((c as u8 - b'0') as usize)
             })
     }
     fn compress(fs: &[isize]) -> impl Iterator<Item = isize> {
