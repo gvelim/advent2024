@@ -6,7 +6,7 @@ fn main() {
     // let diskmap = "2333133121414131402".to_string();
     let fs = FileSystem::read_diskmap(diskmap).collect::<String>();
 
-    println!("00...111...2...333.44.5555.6666.777.888899\n{:?}",fs);
+    println!("{:?}",fs);
 
     let comp = FileSystem::compress(&fs).collect::<String>();
     let chksum = FileSystem::checksum(&comp);
@@ -32,7 +32,7 @@ impl FileSystem {
         fs.char_indices()
             .filter_map(move |(i, c)|{
                 let &(ci, cc) = citer.peek()?;
-                if !(i < fs.len()-ci) { return None };
+                if i >= fs.len()-ci { return None };
                 if c == '.' { citer.next(); Some(cc) } else { Some(c) }
             })
     }
@@ -48,7 +48,7 @@ impl Iterator for Incr {
     type Item = u8;
     fn next(&mut self) -> Option<Self::Item> {
         let r = Some(self.0);
-        self.0 += 1;
+        self.0 = (self.0 + 1) % 10;
         r
     }
 }
