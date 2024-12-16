@@ -1,9 +1,10 @@
 use std::iter::repeat;
 
 fn main() {
-    // let diskmap = std::fs::read_to_string("src/bin/day9/sample.txt").unwrap();
-    let diskmap = "2333133121414131402".to_string();
-    let fs = FileSystem::read_diskmap(&diskmap).collect::<String>();
+    let input = std::fs::read_to_string("src/bin/day9/sample.txt").unwrap();
+    let diskmap = input.lines().next().unwrap();
+    // let diskmap = "2333133121414131402".to_string();
+    let fs = FileSystem::read_diskmap(diskmap).collect::<String>();
 
     println!("00...111...2...333.44.5555.6666.777.888899\n{:?}",fs);
 
@@ -30,7 +31,7 @@ impl FileSystem {
         let mut citer = fs.chars().rev().enumerate().filter(|(_, c)| c != &'.').peekable();
         fs.char_indices()
             .filter_map(move |(i, c)|{
-                let Some(&(ci, cc)) = citer.peek() else { return None };
+                let &(ci, cc) = citer.peek()?;
                 if !(i < fs.len()-ci) { return None };
                 if c == '.' { citer.next(); Some(cc) } else { Some(c) }
             })
