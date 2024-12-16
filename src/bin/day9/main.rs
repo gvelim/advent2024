@@ -4,14 +4,12 @@ fn main() {
     let input = std::fs::read_to_string("src/bin/day9/input.txt").unwrap();
     let diskmap = input.lines().next().unwrap();
     // let diskmap = "2333133121414131402";
+    //
     let fs = FileSystem::read_diskmap(diskmap).collect::<Vec<_>>();
-
-    println!("{:?}",fs);
-
     let comp = FileSystem::compress(&fs).collect::<Vec<_>>();
     let chksum = FileSystem::checksum(&comp);
-
-    println!("{:?} = {:?}",comp, chksum);
+    println!("Part 1: Checksum {:?}",chksum);
+    assert_eq!(6225730762521,chksum);
 }
 
 #[derive(Debug)]
@@ -28,7 +26,7 @@ impl FileSystem {
             })
     }
     fn compress(fs: &[isize]) -> impl Iterator<Item = isize> {
-        let mut citer = fs.iter().rev().enumerate().filter(|(_, c)| **c >= 0).peekable();
+        let mut citer = fs.iter().rev().enumerate().filter(|(_, c)| c.is_positive()).peekable();
         fs.iter()
             .enumerate()
             .filter_map(move |(i, &c)|{
@@ -40,7 +38,7 @@ impl FileSystem {
     fn checksum(comp: &[isize]) -> usize {
         comp.iter()
             .enumerate()
-            .filter(|(_,i)| **i >= 0)
+            .filter(|(_,i)| i.is_positive())
             .map(|(i, c)| i * (*c as usize))
             .sum::<usize>()
     }
