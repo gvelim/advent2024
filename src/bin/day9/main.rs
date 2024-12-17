@@ -16,40 +16,34 @@ fn main() {
 struct FileSystem;
 
 impl FileSystem {
-    fn read_diskmap(map: &str) -> impl Iterator<Item = isize> {
-        let mut inc = Incr(0);
+    fn read_diskmap(map: &str) -> impl Iterator<Item=isize> {
+        let mut id_gen = sequence(0);
         map.char_indices()
             .flat_map(move |(i, c)| {
                 repeat(
-                    if i % 2 == 0 { inc.next().unwrap() } else { -1 }
+                    if i % 2 == 0 { id_gen(1) } else { -1 }
                 ).take((c as u8 - b'0') as usize)
             })
     }
-    fn compress(fs: &[isize]) -> impl Iterator<Item = isize> {
+    fn compress(fs: &[isize]) -> impl Iterator<Item=isize> {
         let mut citer = fs.iter().rev().enumerate().filter(|(_, c)| c.is_positive()).peekable();
         fs.iter()
             .enumerate()
-            .filter_map(move |(i, &c)|{
+            .filter_map(move |(i, &c)| {
                 let &(ci, &cc) = citer.peek()?;
-                if i >= fs.len()-ci { return None };
-                if c < 0isize { citer.next(); Some(cc) } else { Some(c) }
+                if i >= fs.len() - ci { return None };
+                if c.is_negative() { citer.next(); Some(cc) } else { Some(c) }
             })
     }
     fn checksum(comp: &[isize]) -> usize {
         comp.iter()
             .enumerate()
-            .filter(|(_,i)| i.is_positive())
+            .filter(|(_, i)| i.is_positive())
             .map(|(i, c)| i * (*c as usize))
             .sum::<usize>()
     }
 }
 
-struct Incr(isize);
-impl Iterator for Incr {
-    type Item = isize;
-    fn next(&mut self) -> Option<Self::Item> {
-        let r = Some(self.0);
-        self.0 += 1;
-        r
-    }
+fn sequence(mut start: isize) -> impl FnMut(isize) -> isize {
+    move |inc| { let ret = start; start += inc; ret }
 }
