@@ -1,45 +1,56 @@
 use std::str::FromStr;
 use crate::sequence;
 
+pub type Id = isize;
+pub type Count = usize;
+pub type Entry = (Count,Id);
+
+enum EntryPosition { Start, Middle, End }
+
 #[derive(Debug)]
-pub struct DiskMap(Vec<u8>);
+pub struct DiskMap(Vec<Entry>);
 impl DiskMap {
-    pub fn iter(&self) -> impl Iterator<Item = &u8> {
+    pub fn iter(&self) -> impl Iterator<Item = &Entry> {
         self.0.iter()
     }
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut u8> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Entry> {
         self.0.iter_mut()
     }
-    fn spaces(&self) -> impl Iterator<Item=u8> {
+    fn spaces(&self) -> impl Iterator<Item=Entry> {
         let mut inc = sequence(0);
         self.0.iter().copied().filter(move |_| inc(1) % 2 != 0)
     }
-    fn files(&self) -> impl Iterator<Item=u8> {
+    fn files(&self) -> impl Iterator<Item=Entry> {
         let mut inc = sequence(0);
         self.0.iter().copied().filter(move |_| inc(1) % 2 == 0)
     }
-    fn expand(&mut self, idx: usize, value: u8) -> &mut Self {
+    fn insert_file(&mut self, idx: usize, value: Entry) -> &mut Self {
+        if idx % 2 == 0 { return self }
         if self.0.get(idx).is_none() { return self };
-        if self.0.get(idx).unwrap() < &value { return self }
+        if self.0.get(idx).unwrap().0 < value.0 { return self }
         let space = self.0.remove(idx);
-        [0,value,space.abs_diff(value)].into_iter().enumerate().for_each(|(i, v)| {
-            self.0.insert(idx+i, v);
-        });
+        [(0,-1), value, (space.0.abs_diff(value.0),-1)]
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, v)| { self.0.insert(idx+i, v); });
         self
     }
-    fn collapse(&mut self, idx: usize) -> &mut Self {
+    fn remove_file(&mut self, idx: usize) -> &mut Self {
+        if idx % 2 != 0 { return self }
         match (
             idx.checked_sub(1).map(|idx| self.0.get(idx)),
             self.0.get(idx),
             self.0.get(idx + 1)
         ) {
-            (Some(Some(a)), Some(b), Some(c)) => Some((a + b + c, idx - 1..=idx + 1)),
-            (Some(Some(a)), Some(b), None) => Some((a + b, idx - 1..=idx)),
-            (None, Some(b), Some(c)) => Some((b + c, idx..=idx + 1)),
+            (Some(Some(a)), Some(b), Some(c)) => Some((a.0 + b.0 + c.0, idx - 1..=idx + 1, EntryPosition::Middle)),
+            (Some(Some(_)), Some(_), None) => Some((0, idx - 1..=idx, EntryPosition::End)),
+            (None, Some(_), Some(_)) => Some((0, idx..=idx + 1, EntryPosition::Start)),
             _ => None,
-        }.inspect(|(sum, rng)| {
+        }.inspect(|(sum, rng, pos)| {
             self.0.drain(rng.clone());
-            self.0.insert(*rng.start(), *sum);
+            if let EntryPosition::Middle = pos  {
+                self.0.insert(*rng.start(), (*sum,-1));
+            }
         });
         self
     }
@@ -48,8 +59,14 @@ impl DiskMap {
 impl FromStr for DiskMap {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(
-            s.bytes().map(|c| c - b'0').collect()
+        let mut seq = sequence(0);
+        Ok(Self(s
+            .bytes()
+            .enumerate()
+            .map(|(idx,num)|
+                ((num - b'0') as usize, if idx % 2 == 0 { seq(1) } else { -1 })
+            )
+            .collect()
         ))
     }
 }
@@ -61,25 +78,27 @@ mod test {
     fn test_diskmap_parse() {
         let dm = "2333133121414131402".parse::<DiskMap>().unwrap();
         println!("{:?}", dm);
-        println!("Space: {:?}", dm.spaces().collect::<Vec<u8>>());
-        println!("File: {:?}", dm.files().collect::<Vec<u8>>());
+        println!("Space: {:?}", dm.spaces().collect::<Vec<Entry>>());
+        println!("File: {:?}", dm.files().collect::<Vec<Entry>>());
     }
 
     #[test]
     fn test_diskmap_collapse() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
-        assert_eq!(dm.collapse(5).0, vec![2, 3, 3, 3, 6]);
-        assert_eq!(dm.collapse(4).0, vec![2, 3, 3, 9]);
-        assert_eq!(dm.collapse(0).0, vec![5, 3, 9]);
+        println!("{:?}",dm);
+        assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1), (6, -1), (3, 3)]);
+        assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1)]);
+        assert_eq!(dm.remove_file(1).0, vec![(2, 0), (3, -1), (3, 1)]);
+        assert_eq!(dm.remove_file(0).0, vec![(3, 1)]);
         println!("{:?}", dm);
     }
 
     #[test]
     fn test_diskmap_expand() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
-        assert_eq!(dm.expand(1, 2).0, vec![2, 0, 2, 1, 3, 3, 1, 2, 3]);
-        assert_eq!(dm.expand(3, 1).0, vec![2, 0, 2, 0, 1, 0, 3, 3, 1, 2, 3]);
-        assert_eq!(dm.expand(1, 1).0, vec![2,0,2,0,1,0,3,3,1,2,3]);
+        assert_eq!(dm.insert_file(1, (2, 4)).0, vec![(2, 0), (0, -1), (2, 4), (1, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
+        assert_eq!(dm.insert_file(3, (1, 5)).0, vec![(2, 0), (0, -1), (2, 4), (0, -1), (1, 5), (0, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
+        assert_eq!(dm.insert_file(2, (1, 5)).0, vec![(2, 0), (0, -1), (2, 4), (0, -1), (1, 5), (0, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
         println!("{:?}", dm );
     }
 }

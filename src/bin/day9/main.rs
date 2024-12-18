@@ -1,10 +1,7 @@
 mod diskmap;
 
 use std::iter::repeat;
-use std::str::FromStr;
-use itertools::Itertools;
-use nom::Parser;
-use crate::diskmap::DiskMap;
+use crate::diskmap::*;
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day9/sample.txt").unwrap();
@@ -31,8 +28,8 @@ impl FileSystem {
             .enumerate()
             .flat_map(move |(i, &c)| {
                 repeat(
-                    if i % 2 == 0 { (id_gen(1),c) } else { (-1,c) }
-                ).take(c as usize)
+                    if i % 2 == 0 { (id_gen(1),c.0 as u8) } else { (-1,c.0 as u8) }
+                ).take(c.0 as usize)
             })
     }
     fn compress(fs: &[(isize,u8)]) -> impl Iterator<Item=(isize,u8)> {
