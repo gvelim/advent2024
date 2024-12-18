@@ -12,7 +12,7 @@ fn main() {
 
     let t = Instant::now();
     let fs = FileSystem::read_diskmap(&diskmap).collect::<Vec<Entry>>();
-    let comp = FileSystem::compress(&fs).collect::<Vec<_>>();
+    let comp = FileSystem::compress(&fs).collect::<Vec<Entry>>();
     let chksum = FileSystem::checksum(&comp);
     println!("Part 1: Checksum {:?} - {:?}",chksum, t.elapsed());
     assert_eq!(6225730762521,chksum);
@@ -61,15 +61,17 @@ impl FileSystem {
             .sum::<usize>()
     }
     fn move_files(dm: &mut DiskMap) -> &DiskMap {
-        let files = dm.files().cloned().collect::<Vec<_>>();
+        let files = dm.files().cloned().collect::<Vec<Entry>>();
 
         for file in files.iter().rev() {
             let Some(f_pos) = dm.iter().position(|e| e == file) else { continue };
-            let space = dm.spaces().find_position(|space| space.0 >= file.0);
-            if let Some((pos, s)) = space  {
+            let space = dm.spaces().position(|space| space.1.is_negative() && space.0 >= file.0);
+            if let Some(pos) = space {
                 let s_pos = pos * 2 + 1;
-                if s.0 == 0 || s_pos >= f_pos { continue; }
-                dm.remove_file(f_pos).insert_file(s_pos, *file);
+                if s_pos > f_pos{ continue; }
+                dm
+                    .remove_file(f_pos)
+                    .insert_file(s_pos, *file);
             }
         }
         dm
