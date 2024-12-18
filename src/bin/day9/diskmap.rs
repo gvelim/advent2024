@@ -32,8 +32,8 @@ impl DiskMap {
             self.0.get(idx + 1)
         ) {
             (Some(Some(a)), Some(b), Some(c)) => Some((a.0 + b.0 + c.0, idx - 1..=idx + 1)),
-            (Some(Some(_)), Some(_), None) => Some((usize::MAX, idx - 1..=idx)),
-            (None, Some(_), Some(_)) => Some((usize::MAX, idx..=idx + 1)),
+            (Some(Some(_)), Some(_), None) => Some((usize::MAX, idx-1..=idx)),
+            (None, Some(_), Some(_)) => Some((usize::MAX, idx..=idx+1)),
             _ => None,
         }.inspect(|(sum, rng)| {
             self.0.drain(rng.clone());
