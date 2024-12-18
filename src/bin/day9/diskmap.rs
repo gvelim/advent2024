@@ -1,11 +1,8 @@
 use std::str::FromStr;
-use crate::sequence;
 
 pub type Id = isize;
 pub type Count = usize;
 pub type Entry = (Count,Id);
-
-enum EntryPosition { Start, Middle, End }
 
 #[derive(Debug)]
 pub struct DiskMap(Vec<Entry>);
@@ -13,26 +10,18 @@ impl DiskMap {
     pub fn iter(&self) -> impl Iterator<Item = &Entry> {
         self.0.iter()
     }
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Entry> {
-        self.0.iter_mut()
+    pub fn spaces(&self) -> impl Iterator<Item=&Entry> {
+        self.0.iter().filter(|e| e.1 == -1)
     }
-    pub fn spaces(&self) -> impl Iterator<Item=Entry> {
-        let mut inc = sequence(0);
-        self.0.iter().copied().filter(move |_| inc(1) % 2 != 0)
-    }
-    pub(crate) fn files(&self) -> impl Iterator<Item=Entry> {
-        let mut inc = sequence(0);
-        self.0.iter().copied().filter(move |_| inc(1) % 2 == 0)
+    pub(crate) fn files(&self) -> impl Iterator<Item=&Entry> {
+        self.0.iter().filter(|e| e.1 != -1)
     }
     pub(crate) fn insert_file(&mut self, idx: usize, value: Entry) -> &mut Self {
         if idx % 2 == 0 { return self }
         if self.0.get(idx).is_none() { return self };
         if self.0.get(idx).unwrap().0 < value.0 { return self }
         let space = self.0.remove(idx);
-        [(0,-1), value, (space.0.abs_diff(value.0),-1)]
-            .into_iter()
-            .enumerate()
-            .for_each(|(i, v)| { self.0.insert(idx+i, v); });
+        self.0.splice(idx..idx, [(0,-1), value, (space.0.abs_diff(value.0),-1)]);
         self
     }
     pub(crate) fn remove_file(&mut self, idx: usize) -> &mut Self {
@@ -42,18 +31,22 @@ impl DiskMap {
             self.0.get(idx),
             self.0.get(idx + 1)
         ) {
-            (Some(Some(a)), Some(b), Some(c)) => Some((a.0 + b.0 + c.0, idx - 1..=idx + 1, EntryPosition::Middle)),
-            (Some(Some(_)), Some(_), None) => Some((0, idx - 1..=idx, EntryPosition::End)),
-            (None, Some(_), Some(_)) => Some((0, idx..=idx + 1, EntryPosition::Start)),
+            (Some(Some(a)), Some(b), Some(c)) => Some((a.0 + b.0 + c.0, idx - 1..=idx + 1)),
+            (Some(Some(_)), Some(_), None) => Some((usize::MAX, idx - 1..=idx)),
+            (None, Some(_), Some(_)) => Some((usize::MAX, idx..=idx + 1)),
             _ => None,
-        }.inspect(|(sum, rng, pos)| {
+        }.inspect(|(sum, rng)| {
             self.0.drain(rng.clone());
-            if let EntryPosition::Middle = pos  {
+            if sum < &usize::MAX {
                 self.0.insert(*rng.start(), (*sum,-1));
             }
         });
         self
     }
+}
+
+fn sequence(mut start: isize) -> impl FnMut(isize) -> isize {
+    move |inc| { let ret = start; start += inc; ret }
 }
 
 impl FromStr for DiskMap {
@@ -78,8 +71,8 @@ mod test {
     fn test_diskmap_parse() {
         let dm = "2333133121414131402".parse::<DiskMap>().unwrap();
         println!("{:?}", dm);
-        println!("Space: {:?}", dm.spaces().collect::<Vec<Entry>>());
-        println!("File: {:?}", dm.files().collect::<Vec<Entry>>());
+        println!("Space: {:?}", dm.spaces().collect::<Vec<_>>());
+        println!("File: {:?}", dm.files().collect::<Vec<_>>());
     }
 
     #[test]

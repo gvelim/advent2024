@@ -2,23 +2,27 @@ mod diskmap;
 
 use std::fmt::Debug;
 use std::iter::repeat;
+use std::time::Instant;
 use itertools::Itertools;
 use crate::diskmap::*;
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day9/sample.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day9/input.txt").unwrap();
     let mut diskmap = input.lines().next().unwrap().parse::<DiskMap>().unwrap();
-    // let diskmap = "2333133121414131402";
-    //
+
+    let t = Instant::now();
     let fs = FileSystem::read_diskmap(&diskmap).collect::<Vec<_>>();
     let comp = FileSystem::compress(&fs).collect::<Vec<_>>();
     let chksum = FileSystem::checksum(&comp);
-    println!("Part 1: Checksum {:?} - {:?}",chksum,FileSystem::to_string(&comp));
-    // assert_eq!(6225730762521,chksum);
+    println!("Part 1: Checksum {:?} - {:?}",chksum, t.elapsed());
+    assert_eq!(6225730762521,chksum);
+
+    let t = Instant::now();
     let dfg_dm = FileSystem::move_files(&mut diskmap);
     let dfg_fs = FileSystem::read_diskmap(dfg_dm).collect::<Vec<_>>();
     let chksum = FileSystem::checksum(&dfg_fs);
-    println!("Part 2: Checksum {:?} - {:?}",chksum,FileSystem::to_string(&dfg_fs));
+    println!("Part 2: Checksum {:?} - {:?}",chksum, t.elapsed());
+    assert_eq!(6250605700557,chksum);
 }
 
 #[derive(Debug)]
@@ -52,32 +56,24 @@ impl FileSystem {
             .sum::<usize>()
     }
     fn move_files(dm: &mut DiskMap) -> &DiskMap {
-        let files = dm.files().collect::<Vec<_>>();
+        let files = dm.files().cloned().collect::<Vec<_>>();
 
         for file in files.iter().rev() {
-            let f_pos = dm.iter().position(|e| e == file).unwrap();
-            print!("File to move: {:?}", (file,f_pos));
-            let space = dm.iter().filter(|e| e.1.eq(&-1)).find_position(|space| space.0 >= file.0);
+            let Some(f_pos) = dm.iter().position(|e| e == file) else { continue };
+            let space = dm.spaces().find_position(|space| space.0 >= file.0);
             if let Some((pos, space)) = space  {
                 let s_pos = pos * 2 + 1;
-                if space.0 == 0 || s_pos >= f_pos { println!(" - miss"); continue; }
-                print!(" into: {:?}", (s_pos, space));
+                if space.0 == 0 || s_pos >= f_pos { continue; }
                 dm.remove_file(f_pos).insert_file(s_pos, *file);
-                print!(", remove at {} & insert at {}", f_pos, s_pos);
             }
-            println!("\n\t{:?}",dm);
         }
         dm
     }
-    fn to_string(fs: &[(isize, u8)]) -> String {
-        fs.iter()
-            .flat_map(|&(i,c)|{
-                repeat(if i == -1 {'.'} else { (i as u8 + b'0') as char }).take(1)
-            })
-            .collect::<String>()
-    }
-}
-
-fn sequence(mut start: isize) -> impl FnMut(isize) -> isize {
-    move |inc| { let ret = start; start += inc; ret }
+    // fn to_string(fs: &[(isize, u8)]) -> String {
+    //     fs.iter()
+    //         .map(|&(i, _)|{
+    //             if i == -1 {'.'} else { ((i % 10) as u8 + b'0') as char }
+    //         })
+    //         .collect::<String>()
+    // }
 }
