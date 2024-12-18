@@ -16,15 +16,15 @@ impl DiskMap {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Entry> {
         self.0.iter_mut()
     }
-    fn spaces(&self) -> impl Iterator<Item=Entry> {
+    pub fn spaces(&self) -> impl Iterator<Item=Entry> {
         let mut inc = sequence(0);
         self.0.iter().copied().filter(move |_| inc(1) % 2 != 0)
     }
-    fn files(&self) -> impl Iterator<Item=Entry> {
+    pub(crate) fn files(&self) -> impl Iterator<Item=Entry> {
         let mut inc = sequence(0);
         self.0.iter().copied().filter(move |_| inc(1) % 2 == 0)
     }
-    fn insert_file(&mut self, idx: usize, value: Entry) -> &mut Self {
+    pub(crate) fn insert_file(&mut self, idx: usize, value: Entry) -> &mut Self {
         if idx % 2 == 0 { return self }
         if self.0.get(idx).is_none() { return self };
         if self.0.get(idx).unwrap().0 < value.0 { return self }
@@ -35,7 +35,7 @@ impl DiskMap {
             .for_each(|(i, v)| { self.0.insert(idx+i, v); });
         self
     }
-    fn remove_file(&mut self, idx: usize) -> &mut Self {
+    pub(crate) fn remove_file(&mut self, idx: usize) -> &mut Self {
         if idx % 2 != 0 { return self }
         match (
             idx.checked_sub(1).map(|idx| self.0.get(idx)),

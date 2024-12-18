@@ -1,11 +1,13 @@
 mod diskmap;
 
+use std::fmt::Debug;
 use std::iter::repeat;
+use itertools::Itertools;
 use crate::diskmap::*;
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day9/sample.txt").unwrap();
-    let diskmap = input.lines().next().unwrap().parse::<DiskMap>().unwrap();
+    let mut diskmap = input.lines().next().unwrap().parse::<DiskMap>().unwrap();
     // let diskmap = "2333133121414131402";
     //
     let fs = FileSystem::read_diskmap(&diskmap).collect::<Vec<_>>();
@@ -13,9 +15,9 @@ fn main() {
     let chksum = FileSystem::checksum(&comp);
     println!("Part 1: Checksum {:?}",chksum);
     // assert_eq!(6225730762521,chksum);
-    let comp = FileSystem::move_files(&fs).collect::<Vec<_>>();
-    let chksum = FileSystem::checksum(&comp);
-    println!("Part 2: Checksum {:?}, {:?}",chksum, comp);
+    FileSystem::move_files(&mut diskmap);
+    // let chksum = FileSystem::checksum(&comp);
+    println!("Part 2: Checksum {:?}, {:?}",0, diskmap);
 }
 
 #[derive(Debug)]
@@ -49,15 +51,25 @@ impl FileSystem {
             .map(|(i, c)| i * (c.0 as usize))
             .sum::<usize>()
     }
-    fn move_files(fs: &[(isize,u8)]) -> impl Iterator<Item=(isize,u8)> {
-        let mut citer = fs.iter().rev().enumerate().filter(|(_, c)| c.0.is_positive()).peekable();
-        fs.iter()
-            .enumerate()
-            .filter_map(move |(i, &c)| {
-                let &(ci, &cc) = citer.peek()?;
-                if i >= fs.len() - ci { return None };
-                if c.0.is_negative() && cc.1 < c.1 { citer.next(); Some(cc) } else { Some(c) }
-            })
+    fn move_files(dm: &mut DiskMap) {
+        let files = dm.files().collect::<Vec<_>>();
+        let mut offset = 0;
+
+        for file in files.iter().rev() {
+            let f_pos = (file.1 * 2) as usize + offset;
+            print!("File to move: {:?}", (file,f_pos));
+            // find space
+            let space = dm.iter().filter(|e| e.1.eq(&-1)).find_position(|space| space.0 >= file.0);
+            if let Some((pos, space)) = space  {
+                let s_pos = pos * 2 + 1;
+                if space.0 == 0 || s_pos >= f_pos { continue; }
+                print!(" into: {:?}", (s_pos, space));
+                dm.remove_file(f_pos).insert_file(s_pos, *file);
+                print!(", remove at {} & insert at {}", f_pos, s_pos);
+                offset += 2;
+            }
+            println!("\n\t{:?}",dm);
+        }
     }
 }
 
