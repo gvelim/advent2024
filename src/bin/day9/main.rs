@@ -32,9 +32,7 @@ impl FileSystem {
         map.iter()
             .enumerate()
             .flat_map(move |(i, &c)| {
-                repeat(
-                    if i % 2 == 0 { (c.0, c.1) } else { (c.0, -1) }
-                ).take(c.0 as usize)
+                (0..c.0).map(move |_| (c.0, if i % 2 == 0 {c.1} else {-1}))
             })
     }
     fn compress(fs: &[Entry]) -> impl Iterator<Item=Entry> {
