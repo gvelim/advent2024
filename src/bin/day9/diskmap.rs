@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-pub type Id = isize;
-pub type Count = usize;
+pub type Id = i16;
+pub type Count = u8;
 pub type Entry = (Count,Id);
 
 #[derive(Debug)]
@@ -32,12 +32,12 @@ impl DiskMap {
             self.0.get(idx + 1)
         ) {
             (Some(Some(a)), Some(b), Some(c)) => Some((a.0 + b.0 + c.0, idx - 1..=idx + 1)),
-            (Some(Some(_)), Some(_), None) => Some((usize::MAX, idx-1..=idx)),
-            (None, Some(_), Some(_)) => Some((usize::MAX, idx..=idx+1)),
+            (Some(Some(_)), Some(_), None) => Some((Count::MAX, idx-1..=idx)),
+            (None, Some(_), Some(_)) => Some((Count::MAX, idx..=idx+1)),
             _ => None,
         }.inspect(|(sum, rng)| {
             self.0.drain(rng.clone());
-            if sum < &usize::MAX {
+            if sum < &Count::MAX {
                 self.0.insert(*rng.start(), (*sum,-1));
             }
         });
@@ -57,7 +57,7 @@ impl FromStr for DiskMap {
             .bytes()
             .enumerate()
             .map(|(idx,num)|
-                ((num - b'0') as usize, if idx % 2 == 0 { seq(1) } else { -1 })
+                ((num - b'0') as Count, if idx % 2 == 0 { seq(1) } else { -1 } as Id)
             )
             .collect()
         ))

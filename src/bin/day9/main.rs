@@ -3,7 +3,6 @@ mod diskmap;
 use std::fmt::Debug;
 use std::iter::repeat;
 use std::time::Instant;
-use itertools::Itertools;
 use crate::diskmap::*;
 
 fn main() {
@@ -35,7 +34,7 @@ impl FileSystem {
             .flat_map(move |(i, &c)| {
                 repeat(
                     if i % 2 == 0 { (c.0, c.1) } else { (c.0, -1) }
-                ).take(c.0)
+                ).take(c.0 as usize)
             })
     }
     fn compress(fs: &[Entry]) -> impl Iterator<Item=Entry> {
