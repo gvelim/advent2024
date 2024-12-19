@@ -43,6 +43,20 @@ impl DiskMap {
         });
         self
     }
+    pub fn checksum(&self) -> usize {
+        let mut acc = 0;
+        self.iter()
+            .inspect(|p| print!("{:?} - ",p))
+            .flat_map(|&(count, id)| {
+                let val = if id.is_negative() {0} else {id as usize};
+                let ret =
+                    (0..count as usize).map(move |c| (acc+c) * val);
+                acc += count as usize;
+                ret
+            })
+            .inspect(|p| println!("{:?}",p))
+            .sum::<usize>()
+    }
 }
 
 fn sequence(mut start: isize) -> impl FnMut(isize) -> isize {
@@ -80,6 +94,11 @@ impl Debug for DiskMap {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[test]
+    fn test_checksum() {
+        let dm = "2333133121414131402".parse::<DiskMap>().unwrap();
+        assert_eq!(dm.checksum(), 1928);
+    }
     #[test]
     fn test_diskmap_parse() {
         let dm = "2333133121414131402".parse::<DiskMap>().unwrap();

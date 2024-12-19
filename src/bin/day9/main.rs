@@ -34,6 +34,7 @@ impl FileSystem {
                 (0..c.0).map(move |_| (c.0, if i % 2 == 0 {c.1} else {-1}))
             })
     }
+
     fn compress(fs: &[Entry]) -> impl Iterator<Item=Entry> {
         let mut citer = fs.iter()
             .rev()
@@ -49,6 +50,7 @@ impl FileSystem {
                 if c.1.is_negative() { citer.next(); Some(cc) } else { Some(c) }
             })
     }
+
     fn checksum(comp: &[Entry]) -> usize {
         comp.iter()
             .enumerate()
@@ -56,6 +58,7 @@ impl FileSystem {
             .map(|(i, c)| i * c.1 as usize)
             .sum::<usize>()
     }
+
     fn move_files(dm: &mut DiskMap) -> &DiskMap {
         let files = dm.files().cloned().collect::<Vec<Entry>>();
 
