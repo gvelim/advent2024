@@ -1,11 +1,11 @@
-use std::str::FromStr;
+use std::{fmt::Debug, str::FromStr};
 
 pub type Id = i16;
 pub type Count = u8;
 pub type Entry = (Count,Id);
 
-#[derive(Debug)]
 pub struct DiskMap(Vec<Entry>);
+
 impl DiskMap {
     pub fn iter(&self) -> impl Iterator<Item = &Entry> {
         self.0.iter()
@@ -64,6 +64,19 @@ impl FromStr for DiskMap {
     }
 }
 
+impl Debug for DiskMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use crate::FileSystem;
+        for c in FileSystem::read_diskmap(self)
+            .map(|(_,i)|{
+                if i == -1 {'.'} else { ((i % 10) as u8 + b'0') as char }
+            }) {
+                write!(f,"{c}")?
+            };
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -80,8 +93,11 @@ mod test {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
         println!("{:?}",dm);
         assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1), (6, -1), (3, 3)]);
+        println!("{:?}", dm );
         assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1)]);
+        println!("{:?}", dm );
         assert_eq!(dm.remove_file(1).0, vec![(2, 0), (3, -1), (3, 1)]);
+        println!("{:?}", dm );
         assert_eq!(dm.remove_file(0).0, vec![(3, 1)]);
         println!("{:?}", dm);
     }
@@ -89,8 +105,11 @@ mod test {
     #[test]
     fn test_diskmap_expand() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
+        println!("{:?}", dm );
         assert_eq!(dm.insert_file(1, (2, 4)).0, vec![(2, 0), (0, -1), (2, 4), (1, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
+        println!("{:?}", dm );
         assert_eq!(dm.insert_file(3, (1, 5)).0, vec![(2, 0), (0, -1), (2, 4), (0, -1), (1, 5), (0, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
+        println!("{:?}", dm );
         assert_eq!(dm.insert_file(2, (1, 5)).0, vec![(2, 0), (0, -1), (2, 4), (0, -1), (1, 5), (0, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
         println!("{:?}", dm );
     }

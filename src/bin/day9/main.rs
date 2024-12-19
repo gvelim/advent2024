@@ -1,7 +1,6 @@
 mod diskmap;
 
 use std::fmt::Debug;
-use std::iter::repeat;
 use std::time::Instant;
 use crate::diskmap::*;
 
@@ -70,11 +69,4 @@ impl FileSystem {
         }
         dm
     }
-    // fn to_string(fs: &[(isize, u8)]) -> String {
-    //     fs.iter()
-    //         .map(|&(i, _)|{
-    //             if i == -1 {'.'} else { ((i % 10) as u8 + b'0') as char }
-    //         })
-    //         .collect::<String>()
-    // }
 }
