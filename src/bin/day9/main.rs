@@ -65,14 +65,11 @@ impl FileSystem {
 
         for file in files.iter().rev() {
             let Some(f_pos) = dm.iter().position(|e| e == file) else { continue };
-            let space = dm.spaces().position(|space| space.0 >= file.0);
-            if let Some(pos) = space {
-                let s_pos = pos * 2 + 1;
-                if s_pos > f_pos{ continue; }
-                dm
-                    .remove_file(f_pos)
-                    .insert_file(s_pos, *file);
-            }
+            let Some(s_pos) = dm.spaces().position(|space| space.0 >= file.0) else { continue };
+            if s_pos*2+1 > f_pos { continue }
+            dm
+                .remove_file(f_pos)
+                .insert_file(s_pos*2+1, *file);
         }
         dm
     }
