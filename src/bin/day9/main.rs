@@ -9,16 +9,14 @@ fn main() {
     let mut diskmap = input.lines().next().unwrap().parse::<DiskMap>().unwrap();
 
     let t = Instant::now();
-    let fs = FileSystem::read_diskmap(&diskmap).collect::<Vec<Entry>>();
+    let fs = diskmap.expand_diskmap().collect::<Vec<Entry>>();
     let comp = FileSystem::compress(&fs).collect::<Vec<Entry>>();
     let chksum = FileSystem::checksum(&comp);
     println!("Part 1: Checksum {:?} - {:?}",chksum, t.elapsed());
     assert_eq!(6225730762521,chksum);
 
     let t = Instant::now();
-    let dfg_dm = FileSystem::move_files(&mut diskmap);
-    let dfg_fs = FileSystem::read_diskmap(dfg_dm).collect::<Vec<Entry>>();
-    let chksum = FileSystem::checksum(&dfg_fs);
+    let chksum = diskmap.move_files().checksum();
     println!("Part 2: Checksum {:?} - {:?}",chksum, t.elapsed());
     assert_eq!(6250605700557,chksum);
 }
@@ -27,14 +25,6 @@ fn main() {
 struct FileSystem;
 
 impl FileSystem {
-    fn read_diskmap(map: &DiskMap) -> impl Iterator<Item=Entry> {
-        map.iter()
-            .enumerate()
-            .flat_map(move |(i, &c)| {
-                (0..c.0).map(move |_| (c.0, if i % 2 == 0 {c.1} else {-1}))
-            })
-    }
-
     fn compress(fs: &[Entry]) -> impl Iterator<Item=Entry> {
         let mut citer = fs.iter()
             .rev()
@@ -54,22 +44,7 @@ impl FileSystem {
     fn checksum(comp: &[Entry]) -> usize {
         comp.iter()
             .enumerate()
-            .filter(|(_, i)| i.1.is_positive())
-            .map(|(i, c)| i * c.1 as usize)
+            .map(|(idx, &(_,id))| if id.is_negative() {0} else {idx * id as usize})
             .sum::<usize>()
-    }
-
-    fn move_files(dm: &mut DiskMap) -> &DiskMap {
-        let files = dm.files().cloned().collect::<Vec<Entry>>();
-
-        for file in files.iter().rev() {
-            let Some(f_pos) = dm.iter().position(|e| e == file) else { continue };
-            let Some(s_pos) = dm.spaces().position(|space| space.0 >= file.0) else { continue };
-            if s_pos*2+1 > f_pos { continue }
-            dm
-                .remove_file(f_pos)
-                .insert_file(s_pos*2+1, *file);
-        }
-        dm
     }
 }

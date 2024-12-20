@@ -10,12 +10,15 @@ impl DiskMap {
     pub fn iter(&self) -> impl Iterator<Item = &Entry> {
         self.0.iter()
     }
+
     pub fn spaces(&self) -> impl Iterator<Item=&Entry> {
         self.0.iter().filter(|e| e.1 == -1)
     }
+
     pub(crate) fn files(&self) -> impl Iterator<Item=&Entry> {
         self.0.iter().filter(|e| e.1 != -1)
     }
+
     pub(crate) fn insert_file(&mut self, idx: usize, value: Entry) -> &mut Self {
         if idx % 2 == 0 { return self }
         if self.0.get(idx).is_none() { return self };
@@ -24,6 +27,7 @@ impl DiskMap {
         self.0.splice(idx..idx, [(0,-1), value, (space.0.abs_diff(value.0),-1)]);
         self
     }
+
     pub(crate) fn remove_file(&mut self, idx: usize) -> &mut Self {
         if idx % 2 != 0 { return self }
         match (
@@ -43,18 +47,31 @@ impl DiskMap {
         });
         self
     }
-    pub fn checksum(&self) -> usize {
-        let mut acc = 0;
+
+    pub fn expand_diskmap(&self) -> impl Iterator<Item=Entry> {
         self.iter()
-            .inspect(|p| print!("{:?} - ",p))
-            .flat_map(|&(count, id)| {
-                let val = if id.is_negative() {0} else {id as usize};
-                let ret =
-                    (0..count as usize).map(move |c| (acc+c) * val);
-                acc += count as usize;
-                ret
+            .flat_map(move |&(count, id)| {
+                (0..count).map(move |_| (count, id))
             })
-            .inspect(|p| println!("{:?}",p))
+    }
+
+    pub fn move_files(&mut self) -> &DiskMap {
+        let files = self.files().cloned().collect::<Vec<Entry>>();
+
+        for file in files.iter().rev() {
+            let Some(f_pos) = self.iter().position(|e| e == file) else { continue };
+            let Some(s_pos) = self.spaces().position(|space| space.0 >= file.0) else { continue };
+            if s_pos*2+1 > f_pos { continue }
+            self
+                .remove_file(f_pos)
+                .insert_file(s_pos*2+1, *file);
+        }
+        self
+    }
+    pub fn checksum(&self) -> usize {
+        self.expand_diskmap()
+            .enumerate()
+            .map(|(idx, (_,id))| if id.is_negative() {0} else {idx * id as usize})
             .sum::<usize>()
     }
 }
@@ -80,13 +97,12 @@ impl FromStr for DiskMap {
 
 impl Debug for DiskMap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use crate::FileSystem;
-        for c in FileSystem::read_diskmap(self)
-            .map(|(_,i)|{
-                if i == -1 {'.'} else { ((i % 10) as u8 + b'0') as char }
-            }) {
-                write!(f,"{c}")?
-            };
+        for c in self
+            .expand_diskmap()
+            .map(|(_,i)| if i == -1 {'.'} else { ((i % 10) as u8 + b'0') as char })
+        {
+            write!(f,"{c}")?
+        };
         Ok(())
     }
 }
@@ -97,7 +113,8 @@ mod test {
     #[test]
     fn test_checksum() {
         let dm = "2333133121414131402".parse::<DiskMap>().unwrap();
-        assert_eq!(dm.checksum(), 1928);
+        println!("{:?}",dm);
+        assert_eq!(dm.checksum(), 4116);
     }
     #[test]
     fn test_diskmap_parse() {
