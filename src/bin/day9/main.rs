@@ -26,7 +26,7 @@ struct FileSystem;
 
 impl FileSystem {
     fn compress(fs: &[Entry]) -> impl Iterator<Item=Entry> {
-        let mut citer = fs.iter()
+        let mut files = fs.iter()
             .rev()
             .enumerate()
             .filter(|(_, c)| c.1.is_positive())
@@ -35,9 +35,9 @@ impl FileSystem {
         fs.iter()
             .enumerate()
             .filter_map(move |(i, &c)| {
-                let &(ci, &cc) = citer.peek()?;
+                let &(ci, &cc) = files.peek()?;
                 if i >= fs.len() - ci { return None };
-                if c.1.is_negative() { citer.next(); Some(cc) } else { Some(c) }
+                if c.1.is_negative() { files.next(); Some(cc) } else { Some(c) }
             })
     }
 

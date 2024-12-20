@@ -57,13 +57,14 @@ impl DiskMap {
 
     pub fn move_files(&mut self) -> &DiskMap {
         let files = self.files().cloned().collect::<Vec<Entry>>();
+        let len = self.0.len() - 1 ;
 
         for file in files.iter().rev() {
-            let Some(f_pos) = self.iter().position(|e| e == file) else { continue };
+            let Some(f_pos) = self.0.iter().rev().position(|e| e == file) else { continue };
             let Some(s_pos) = self.spaces().position(|space| space.0 >= file.0) else { continue };
-            if s_pos*2+1 > f_pos { continue }
+            if s_pos*2+1 > len - f_pos { continue }
             self
-                .remove_file(f_pos)
+                .remove_file(len - f_pos)
                 .insert_file(s_pos*2+1, *file);
         }
         self
@@ -125,7 +126,7 @@ mod test {
     }
 
     #[test]
-    fn test_diskmap_collapse() {
+    fn test_diskmap_remove_file() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
         println!("{:?}",dm);
         assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1), (6, -1), (3, 3)]);
@@ -139,7 +140,7 @@ mod test {
     }
 
     #[test]
-    fn test_diskmap_expand() {
+    fn test_diskmap_insert_file() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
         println!("{:?}", dm );
         assert_eq!(dm.insert_file(1, (2, 4)).0, vec![(2, 0), (0, -1), (2, 4), (1, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
