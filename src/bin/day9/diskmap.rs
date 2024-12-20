@@ -4,6 +4,7 @@ pub type Id = i16;
 pub type Count = u8;
 pub type Entry = (Count,Id);
 
+#[derive(Clone)]
 pub struct DiskMap(Vec<Entry>);
 
 impl DiskMap {
@@ -25,6 +26,21 @@ impl DiskMap {
         if self.0.get(idx).unwrap().0 < value.0 { return self }
         let space = self.0.remove(idx);
         self.0.splice(idx..idx, [(0,-1), value, (space.0.abs_diff(value.0),-1)]);
+        self
+    }
+
+    pub fn move_file(&mut self, src: usize, dst: usize) -> &mut Self {
+        if src % 2 != 0 || dst % 2 == 0 { return self }
+        if self.0.get(src).is_none() || self.0.get(dst).is_none() { return self }
+
+        let file = self.0[src];
+        if self.0[dst].0 >= self.0[src].0 {
+            self.insert_file(dst, file)
+                .remove_file(src+2);
+        } else {
+            self.0[src].0 -= self.0[dst].0;
+            self.insert_file(dst, (self.0[dst].0, file.1 ));
+        }
         self
     }
 
@@ -55,7 +71,17 @@ impl DiskMap {
             })
     }
 
-    pub fn move_files(&mut self) -> &DiskMap {
+    pub fn compress(&mut self) -> &DiskMap {
+        loop {
+            let Some(s_pos) = self.0.iter()
+                .position(|space| space.1.is_negative() && space.0 > 0)
+            else { break };
+            self.move_file(self.0.len() - 1, s_pos);
+        }
+        self
+    }
+
+    pub fn defragment(&mut self) -> &DiskMap {
         let files = self.files().cloned().collect::<Vec<Entry>>();
         let len = self.0.len() - 1 ;
 
@@ -123,6 +149,27 @@ mod test {
         println!("{:?}", dm);
         println!("Space: {:?}", dm.spaces().collect::<Vec<_>>());
         println!("File: {:?}", dm.files().collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_diskmap_compress() {
+        let mut dm = "2333133121414131402".parse::<DiskMap>().unwrap();
+        println!("{:?}", dm);
+        println!("Space: {:?}", dm.compress());
+        println!("Checksum: {:?}", dm.checksum());
+        assert_eq!(1928,dm.checksum());
+    }
+
+    #[test]
+    fn test_diskmap_move_file() {
+        let mut dm = "2333123".parse::<DiskMap>().unwrap();
+        println!("\n{:?}",dm);
+        assert_eq!(dm.move_file(4,1).0, vec![(2, 0), (0,-1), (1, 2), (2, -1), (3, 1), (6, -1), (3, 3)]);
+        println!("{:?}", dm );
+        assert_eq!(dm.move_file(6,3).0, vec![(2, 0), (0,-1), (1, 2), (0,-1),(2, 3),(0,-1),(3, 1), (6, -1), (1, 3)]);
+        println!("{:?}", dm );
+        assert_eq!(dm.move_file(8,7).0, vec![(2, 0), (0,-1), (1, 2), (0,-1),(2, 3),(0,-1),(3, 1), (0,-1),(1,3)]);
+        println!("{:?}", dm );
     }
 
     #[test]

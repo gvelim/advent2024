@@ -16,7 +16,7 @@ fn main() {
     assert_eq!(6225730762521,chksum);
 
     let t = Instant::now();
-    let chksum = diskmap.move_files().checksum();
+    let chksum = diskmap.defragment().checksum();
     println!("Part 2: Checksum {:?} - {:?}",chksum, t.elapsed());
     assert_eq!(6250605700557,chksum);
 }
