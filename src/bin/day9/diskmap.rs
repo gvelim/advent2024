@@ -8,24 +8,20 @@ pub type Entry = (Count,Id);
 pub struct DiskMap(Vec<Entry>);
 
 impl DiskMap {
-    pub fn iter(&self) -> impl Iterator<Item = &Entry> {
-        self.0.iter()
-    }
-
     pub fn spaces(&self) -> impl Iterator<Item=&Entry> {
-        self.0.iter().filter(|e| e.1 == -1)
+        self.0.iter().filter(|e| e.1.is_negative())
     }
 
     pub(crate) fn files(&self) -> impl Iterator<Item=&Entry> {
         self.0.iter().filter(|e| e.1 != -1)
     }
 
-    fn insert_file(&mut self, idx: usize, value: Entry) -> &mut Self {
+    fn insert_file(&mut self, idx: usize, file: Entry) -> &mut Self {
         if idx % 2 == 0 { return self }
         if self.0.get(idx).is_none() { return self };
-        if self.0.get(idx).unwrap().0 < value.0 { return self }
+        if self.0.get(idx).unwrap().0 < file.0 { return self }
         let space = self.0.remove(idx);
-        self.0.splice(idx..idx, [(0,-1), value, (space.0.abs_diff(value.0),-1)]);
+        self.0.splice(idx..idx, [(0,-1), file, (space.0.abs_diff(file.0),-1)]);
         self
     }
 
@@ -67,7 +63,7 @@ impl DiskMap {
     }
 
     pub fn expand_diskmap(&self) -> impl Iterator<Item=Entry> {
-        self.iter()
+        self.0.iter()
             .flat_map(move |&(count, id)| {
                 (0..count).map(move |_| (count, id))
             })
