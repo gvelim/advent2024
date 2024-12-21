@@ -72,12 +72,12 @@ impl DiskMap {
     }
 
     pub fn compress(&mut self) -> &DiskMap {
-        loop {
-            let Some(s_pos) = self
-                .spaces()
-                .position(|space| space.0 > 0)
-            else { break };
-            self.move_file(self.0.len() - 1, s_pos*2+1);
+        let mut s_pos = 1;
+        while s_pos < self.0.len() - 1 {
+            if self.0[s_pos].0 > 0 {
+                self.move_file(self.0.len() - 1, s_pos);
+            }
+            s_pos += 2;
         }
         self
     }
