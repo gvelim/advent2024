@@ -20,7 +20,7 @@ impl DiskMap {
         self.0.iter().filter(|e| e.1 != -1)
     }
 
-    pub(crate) fn insert_file(&mut self, idx: usize, value: Entry) -> &mut Self {
+    fn insert_file(&mut self, idx: usize, value: Entry) -> &mut Self {
         if idx % 2 == 0 { return self }
         if self.0.get(idx).is_none() { return self };
         if self.0.get(idx).unwrap().0 < value.0 { return self }
@@ -29,7 +29,7 @@ impl DiskMap {
         self
     }
 
-    pub fn move_file(&mut self, src: usize, dst: usize) -> &mut Self {
+    fn move_file(&mut self, src: usize, dst: usize) -> &mut Self {
         if src % 2 != 0 || dst % 2 == 0 { return self }
         if self.0.get(src).is_none() || self.0.get(dst).is_none() { return self }
 
@@ -44,22 +44,24 @@ impl DiskMap {
         self
     }
 
-    pub(crate) fn remove_file(&mut self, idx: usize) -> &mut Self {
+    fn remove_file(&mut self, idx: usize) -> &mut Self {
         if idx % 2 != 0 { return self }
         match (
-            idx.checked_sub(1).map(|idx| self.0.get(idx)),
+            idx.checked_sub(1).and_then(|idx| self.0.get(idx)),
             self.0.get(idx),
             self.0.get(idx + 1)
         ) {
-            (Some(Some(a)), Some(b), Some(c)) => Some((a.0 + b.0 + c.0, idx - 1..=idx + 1)),
-            (Some(Some(_)), Some(_), None) => Some((Count::MAX, idx-1..=idx)),
+            (Some(a), Some(b), Some(c)) => Some((a.0+b.0+c.0, idx-1..=idx+1)),
+            (Some(_), Some(_), None) => Some((Count::MAX, idx-1..=idx)),
             (None, Some(_), Some(_)) => Some((Count::MAX, idx..=idx+1)),
             _ => None,
-        }.inspect(|(sum, rng)| {
-            self.0.drain(rng.clone());
-            if sum < &Count::MAX {
-                self.0.insert(*rng.start(), (*sum,-1));
+        }
+        .map(|(sum, rng)| {
+            self.0.drain(rng);
+            if sum < Count::MAX {
+                self.0.insert(idx-1, (sum,-1));
             }
+            Some(())
         });
         self
     }
@@ -176,7 +178,7 @@ mod test {
     #[test]
     fn test_diskmap_remove_file() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
-        println!("{:?}",dm);
+        println!("\n{:?}",dm);
         assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1), (6, -1), (3, 3)]);
         println!("{:?}", dm );
         assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1)]);
@@ -190,7 +192,7 @@ mod test {
     #[test]
     fn test_diskmap_insert_file() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
-        println!("{:?}", dm );
+        println!("\n{:?}", dm );
         assert_eq!(dm.insert_file(1, (2, 4)).0, vec![(2, 0), (0, -1), (2, 4), (1, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
         println!("{:?}", dm );
         assert_eq!(dm.insert_file(3, (1, 5)).0, vec![(2, 0), (0, -1), (2, 4), (0, -1), (1, 5), (0, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
