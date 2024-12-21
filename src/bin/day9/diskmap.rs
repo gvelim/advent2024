@@ -81,19 +81,18 @@ impl DiskMap {
     }
 
     pub fn defragment(&mut self) -> &DiskMap {
-        let files = self.files().cloned().collect::<Vec<Entry>>();
+        let files = self.files().cloned().collect::<std::rc::Rc<[Entry]>>();
         let len = self.0.len() - 1 ;
 
         for file in files.iter().rev() {
             let Some(f_pos) = self.0.iter().rev().position(|e| e == file) else { continue };
             let Some(s_pos) = self.spaces().position(|space| space.0 >= file.0) else { continue };
-            if s_pos*2+1 > len - f_pos { continue }
-            self
-                .remove_file(len - f_pos)
-                .insert_file(s_pos*2+1, *file);
+            if s_pos*2+1 >= len - f_pos { continue }
+            self.move_file(len-f_pos, s_pos*2+1);
         }
         self
     }
+
     pub fn checksum(&self) -> usize {
         self.expand_diskmap()
             .enumerate()
