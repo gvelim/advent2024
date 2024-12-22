@@ -1,22 +1,32 @@
-use std::rc::Rc;
+use std::{rc::Rc, str::FromStr};
 
-use advent2024::{location::*, field::Field};
+use advent2024::{field::Field, location::*};
 
 fn main() {
-    todo!()
+    let input = std::fs::read_to_string("src/bin/day10/sample.txt").unwrap();
+    let map = input.parse::<TopographicalMap>().unwrap();
+
+    println!("{:?}", map);
 }
 
-type TopographicalMap = Field<u8>;
+#[derive(Debug)]
+struct TopographicalMap(Field<u8>);
 
-struct Trail {
-    map: Rc<TopographicalMap>,
-    pos: Location
+impl TopographicalMap {
+    fn lowests(&self) -> impl Iterator<Item = Location> {
+        self.0.iter()
+            .enumerate()
+            .filter(|&(_,s)| *s == 0)
+            .map(|(idx,_)| self.0.index_to_cartesian(idx))
+    }
 }
 
-impl Iterator for Trail {
-    type Item = u8;
+impl FromStr for TopographicalMap {
+    type Err = ();
 
-    fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(TopographicalMap(
+            s.parse::<Field<u8>>()?
+        ))
     }
 }

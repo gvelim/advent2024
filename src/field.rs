@@ -59,6 +59,19 @@ impl FromStr for Field<char> {
     }
 }
 
+impl FromStr for Field<u8> {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Field {
+            cells: s
+                .lines()
+                .map(|s| s.bytes().map(|c| c - b'0').collect::<Vec<u8>>())
+                .collect::<Vec<_>>(),
+        })
+    }
+}
+
 impl<T> Debug for Field<T> where T: Debug + Display {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f,"W:{},H{}",self.width(),self.height())?;
