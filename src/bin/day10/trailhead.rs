@@ -9,11 +9,15 @@ pub(crate) struct TrailHead {
 
 impl TrailHead {
 
-    pub(crate) fn new(history: bool) -> TrailHead {
-        TrailHead { history: if history { Some(HashSet::new()) } else { None } }
+    pub(crate) fn unique_trails() -> TrailHead {
+        TrailHead { history: None }
     }
 
-    pub(crate) fn search_path(&mut self, map: &TopographicalMap, loc: Location, is_found: fn(u8)->bool) -> Option<usize> {
+    pub(crate) fn trail_heads() -> TrailHead {
+        TrailHead { history: Some(HashSet::new()) }
+    }
+
+    pub(crate) fn count_trails(&mut self, map: &TopographicalMap, loc: Location, is_found: fn(u8)->bool) -> Option<usize> {
         let &val = map.get(loc)?;
         if is_found(val) { return Some(1) }
         Some(
@@ -25,7 +29,7 @@ impl TrailHead {
                     if map.get(neighbor).is_some_and(|&nv| nv != val+1) { return None }
 
                     self.history.as_mut().map(|h| h.insert(neighbor));
-                    self.search_path(map, neighbor, is_found)
+                    self.count_trails(map, neighbor, is_found)
                 })
                 .sum::<usize>()
         )

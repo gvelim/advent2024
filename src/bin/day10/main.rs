@@ -12,7 +12,7 @@ fn main() {
     let t = Instant::now();
     let sum = map.lowests()
         .filter_map(|start|
-            TrailHead::new(true).search_path(&map, start, |d| d == 9)
+            TrailHead::trail_heads().count_trails(&map, start, |d| d == 9)
         )
         .sum::<usize>();
     println!("Part 1: Sum of the scores of all trailheads = {sum} - {:?}", t.elapsed());
@@ -21,7 +21,7 @@ fn main() {
     let t = Instant::now();
     let sum = map.lowests()
         .filter_map(|start|
-            TrailHead::new(false).search_path(&map, start, |d| d == 9)
+            TrailHead::unique_trails().count_trails(&map, start, |d| d == 9)
         )
         .sum::<usize>();
     println!("Part 2: Sum of the ratings of all unique trailheads = {sum} - {:?}", t.elapsed());
