@@ -1,23 +1,34 @@
+use rayon::prelude::*;
 
 fn main() {
-    let stones = vec![125, 17];
+    // let stones = vec![125, 17];
+    let stones = vec![1, 24596, 0, 740994, 60, 803, 8918, 9405859];
 
-    let blink_once = |stones: Vec<Stone>| stones.into_iter()
-        .flat_map(|stone| stone.blink())
-        .filter_map(|s| s);
+    let blink_once =
+        |stones: Vec<Stone>| stones
+            .into_par_iter()
+            .flat_map(|stone| stone.blink())
+            .flatten();
 
-    let b = blink_once(stones).collect::<Vec<_>>();
-    println!("{:?}", b);
-    let b = blink_once(b).collect::<Vec<_>>();
-    println!("{:?}", b);
-    let b = blink_once(b).collect::<Vec<_>>();
-    println!("{:?}", b);
+    let stones = (0..25).fold(stones, |stones, _|{
+        blink_once(stones).collect::<Vec<_>>()
+    });
+    println!("Part 1: {} stones after blinking 25 times",stones.len() );
+    assert_eq!(203457, stones.len());
+
+    let stones = (25..45).fold(stones, |stones, c|{
+        let v = blink_once(stones).collect::<Vec<_>>();
+        println!("{c} - {:?}",v.len());
+        v
+    });
+    println!("Part 2: {} stones after blinking 75 times",stones.len() );
+    // assert_eq!(203457, stones.len());
 }
 
-type Stone = usize;
+type Stone = u64;
 trait Blink {
     fn blink(self) -> [Option<Stone>;2];
-    fn is_even_digit(self) -> bool;
+    fn is_even_digit(&self) -> bool;
 }
 impl Blink for Stone {
     fn blink(self) -> [Option<Stone>;2] {
@@ -29,20 +40,16 @@ impl Blink for Stone {
             [Some(self * 2024),None]
         }
     }
-
-    fn is_even_digit(self) -> bool {
-        self.to_string().len() % 2 == 0
+    fn is_even_digit(&self) -> bool {
+        self.ilog10() % 2 == 1
     }
 }
 
 fn split_stone(stone: Stone) -> [Option<Stone>;2] {
-    let s = stone.to_string();
-    if s.len() % 2 != 0 {
-        return [None,None]
-    }
+    let m = (10 as Stone).pow((stone.ilog10() + 1) / 2);
     [
-        s[0..s.len()/2].parse::<Stone>().ok(),
-        s[s.len()/2..].parse::<Stone>().ok()
+        Some(stone / m),
+        Some(stone % m)
     ]
 }
 
