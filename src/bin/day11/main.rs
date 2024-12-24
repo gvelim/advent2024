@@ -47,10 +47,7 @@ impl Blink for Stone {
 
 fn split_stone(stone: Stone) -> [Option<Stone>;2] {
     let m = (10 as Stone).pow((stone.ilog10() + 1) / 2);
-    [
-        Some(stone / m),
-        Some(stone % m)
-    ]
+    [Some(stone / m), Some(stone % m)]
 }
 
 #[cfg(test)]
@@ -59,7 +56,7 @@ mod test {
     #[test]
     fn test_split_stone() {
         assert_eq!(split_stone(1234), [Some(12),Some(34)]);
-        assert_eq!(split_stone(12345), [None,None]);
+        assert_eq!(split_stone(12345), [Some(123), Some(45)]);
         assert_eq!(split_stone(123456), [Some(123),Some(456)]);
         assert_eq!(split_stone(120056), [Some(120),Some(56)]);
     }
