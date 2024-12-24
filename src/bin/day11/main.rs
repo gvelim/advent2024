@@ -1,23 +1,37 @@
 
 fn main() {
+    let stones = vec![125, 17];
 
+    let blink_once = |stones: Vec<Stone>| stones.into_iter()
+        .flat_map(|stone| stone.blink())
+        .filter_map(|s| s);
+
+    let b = blink_once(stones).collect::<Vec<_>>();
+    println!("{:?}", b);
+    let b = blink_once(b).collect::<Vec<_>>();
+    println!("{:?}", b);
+    let b = blink_once(b).collect::<Vec<_>>();
+    println!("{:?}", b);
 }
 
 type Stone = usize;
-
 trait Blink {
     fn blink(self) -> [Option<Stone>;2];
+    fn is_even_digit(self) -> bool;
 }
-
 impl Blink for Stone {
     fn blink(self) -> [Option<Stone>;2] {
         if self == 0 {
             [Some(1),None]
-        } else if self % 2 == 0 {
+        } else if self.is_even_digit() {
             split_stone(self)
         } else {
             [Some(self * 2024),None]
         }
+    }
+
+    fn is_even_digit(self) -> bool {
+        self.to_string().len() % 2 == 0
     }
 }
 
