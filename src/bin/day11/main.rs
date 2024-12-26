@@ -1,4 +1,3 @@
-use rayon::prelude::*;
 
 fn main() {
     // let stones = vec![125, 17];
@@ -6,7 +5,7 @@ fn main() {
 
     let blink_once =
         |stones: Vec<Stone>| stones
-            .into_par_iter()
+            .into_iter()
             .flat_map(|stone| stone.blink())
             .flatten();
 
@@ -23,6 +22,29 @@ fn main() {
     });
     println!("Part 2: {} stones after blinking 75 times",stones.len() );
     // assert_eq!(203457, stones.len());
+}
+
+
+fn blink_count(blink: usize, stone: Stone) -> usize {
+    // print!("{:?}",(blink,stone));
+    if blink == 0 {
+        // println!("!");
+        return 1
+    }
+    // println!();
+    match stone.blink() {
+        [None, None] |
+        [None, Some(_)] => unreachable!(),
+        [Some(a), None] => blink_count(blink-1, a),
+        [Some(a), Some(b)] =>
+            blink_count(blink-1, a)
+            + blink_count(blink-1, b),
+    }
+}
+
+fn split_stone(stone: Stone) -> [Option<Stone>;2] {
+    let m = (10 as Stone).pow((stone.ilog10() + 1) / 2);
+    [Some(stone / m), Some(stone % m)]
 }
 
 type Stone = u64;
@@ -45,14 +67,14 @@ impl Blink for Stone {
     }
 }
 
-fn split_stone(stone: Stone) -> [Option<Stone>;2] {
-    let m = (10 as Stone).pow((stone.ilog10() + 1) / 2);
-    [Some(stone / m), Some(stone % m)]
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
+    #[test]
+    fn test_blink_count() {
+        println!("{:?}", blink_count(5, 0));
+    }
+
     #[test]
     fn test_split_stone() {
         assert_eq!(split_stone(1234), [Some(12),Some(34)]);
