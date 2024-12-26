@@ -1,29 +1,23 @@
 
 fn main() {
     // let stones = vec![125, 17];
-    let stones = vec![1, 24596, 0, 740994, 60, 803, 8918, 9405859];
+    let stones = vec![1 as Stone, 24596, 0, 740994, 60, 803, 8918, 9405859];
 
-    let blink_once =
-        |stones: Vec<Stone>| stones
-            .into_iter()
-            .flat_map(|stone| stone.blink())
-            .flatten();
+    let count = stones
+        .iter()
+        .map(|&stone| blink_count(25, stone))
+        .sum::<usize>();
+    println!("Part 1: {} stones after blinking 25 times",count );
+    assert_eq!(203457, count);
 
-    let stones = (0..25).fold(stones, |stones, _|{
-        blink_once(stones).collect::<Vec<_>>()
-    });
-    println!("Part 1: {} stones after blinking 25 times",stones.len() );
-    assert_eq!(203457, stones.len());
-
-    let stones = (25..45).fold(stones, |stones, c|{
-        let v = blink_once(stones).collect::<Vec<_>>();
-        println!("{c} - {:?}",v.len());
-        v
-    });
-    println!("Part 2: {} stones after blinking 75 times",stones.len() );
+    // let stones = (25..45).fold(stones, |stones, c|{
+    //     let v = blink_once(stones).collect::<Vec<_>>();
+    //     println!("{c} - {:?}",v.len());
+    //     v
+    // });
+    // println!("Part 2: {} stones after blinking 75 times",stones.len() );
     // assert_eq!(203457, stones.len());
 }
-
 
 fn blink_count(blink: usize, stone: Stone) -> usize {
     // print!("{:?}",(blink,stone));
@@ -48,6 +42,7 @@ fn split_stone(stone: Stone) -> [Option<Stone>;2] {
 }
 
 type Stone = u64;
+
 trait Blink {
     fn blink(self) -> [Option<Stone>;2];
     fn is_even_digit(&self) -> bool;
@@ -72,7 +67,7 @@ mod test {
     use super::*;
     #[test]
     fn test_blink_count() {
-        println!("{:?}", blink_count(5, 0));
+        println!("{:?}", blink_count(10, 0));
     }
 
     #[test]
