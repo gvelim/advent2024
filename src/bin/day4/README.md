@@ -30,10 +30,14 @@ let (height, width) = (field.height(), field.width());
 
 ### Step 2: Defining the Search Function
 
-We define a function `search_directions` that takes a reference to the field and a set of directions. This function returns a closure that can be used to scan directinally for a specific word starting from a given location.
+We define a function `search_directions` that takes a reference to the field and a set of directions. This function returns a closure that can be used to directionally scan for a specific word starting from a given location.
 
 ```rust
-fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [DirVector]) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,DirVector)> + 'a> {
+fn search_directions<'a>(
+    field: &'a Field<char>,
+    dirs: &'a [DirVector]
+) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,DirVector)> + 'a>
+{
     move |word: &'a str, pos: Location| {
         let ret = dirs.iter()
             .copied()
@@ -49,7 +53,13 @@ fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [DirVector]) -> impl 
 The `is_word_matched` function checks if a given word matches the characters in the field starting from a specific location and moving in a specified direction.
 
 ```rust
-fn is_word_matched(field: &Field<char>, word: &str, start: Location, dir: DirVector) -> bool {
+fn is_word_matched(
+    field: &Field<char>,
+    word: &str,
+    start: Location,
+    dir: DirVector
+) -> bool
+{
     word.char_indices()
         .all(|(i,c)| start
             .move_relative((dir.0 * i as isize, dir.1 * i as isize))
