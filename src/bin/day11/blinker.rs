@@ -2,16 +2,9 @@ use std::collections::HashMap;
 
 pub type Stone = u64;
 
+#[derive(Default)]
 pub(crate) struct Blinker {
     cache: HashMap<(usize,Stone),usize>
-}
-
-impl Default for Blinker {
-    fn default() -> Self {
-        Blinker {
-            cache: HashMap::new()
-        }
-    }
 }
 
 impl Blinker {
