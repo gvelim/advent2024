@@ -37,20 +37,20 @@ fn split_stone(stone: Stone) -> [Option<Stone>;2] {
 
 trait Blink {
     fn blink(self) -> [Option<Stone>;2];
-    fn is_even_digit(&self) -> bool;
+    fn has_even_digits(&self) -> bool;
 }
 
 impl Blink for Stone {
     fn blink(self) -> [Option<Stone>;2] {
         if self == 0 {
             [Some(1),None]
-        } else if self.is_even_digit() {
+        } else if self.has_even_digits() {
             split_stone(self)
         } else {
             [Some(self * 2024),None]
         }
     }
-    fn is_even_digit(&self) -> bool {
+    fn has_even_digits(&self) -> bool {
         self.ilog10() % 2 == 1
     }
 }
