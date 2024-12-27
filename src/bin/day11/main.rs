@@ -1,60 +1,49 @@
-use std::{cell::RefCell, collections::HashMap};
-
-use rayon::prelude::*;
+use std::collections::HashMap;
 
 fn main() {
-    // let stones = vec![125, 17];
     let stones = vec![1 as Stone, 24596, 0, 740994, 60, 803, 8918, 9405859];
+    let mut blinker = Blinker::default();
 
-    let blinker = Blinker::default();
-    let count = stones
-        .iter()
-        .map(|&stone| blinker.blink_count(25, stone))
-        .sum::<usize>();
+    let mut blink_counter = |stones: &[Stone], blinks: usize| {
+        stones
+            .iter()
+            .map(|&stone| blinker.count(blinks, stone))
+            .sum::<usize>()
+    };
+
+    let count = blink_counter(&stones, 25);
     println!("Part 1: {} stones after blinking 25 times",count );
     assert_eq!(203457, count);
 
-    let count = stones
-        .iter()
-        .map(|&stone| blinker.blink_count(75, stone))
-        .inspect(|p| println!("{:?}",p))
-        .sum::<usize>();
+    let count = blink_counter(&stones, 75);
     println!("Part 2: {} stones after blinking 75 times",count );
     assert_eq!(241394363462435, count);
 }
 
 struct Blinker {
-    cache: RefCell<HashMap<(usize,Stone),usize>>
+    cache: HashMap<(usize,Stone),usize>
 }
 
 impl Default for Blinker {
     fn default() -> Self {
         Blinker {
-            cache: RefCell::new(HashMap::new())
+            cache: HashMap::new()
         }
     }
 }
 
 impl Blinker {
-    fn blink_count(&self, blink: usize, stone: Stone) -> usize {
-        // print!("{:?}",(blink,stone));
-        if blink == 0 {
-            // println!("!");
-            return 1
-        }
-        // println!();
-        if self.cache.borrow().contains_key(&(blink,stone)) {
-            return *self.cache.borrow().get(&(blink,stone)).unwrap();
-        }
+    fn count(&mut self, blink: usize, stone: Stone) -> usize {
+        if blink == 0 { return 1 }
+        if let Some(&ret) =  self.cache.get(&(blink,stone)) { return ret }
         let ret = match stone.blink() {
-            [None, None] |
-            [None, Some(_)] => unreachable!(),
-            [Some(a), None] => self.blink_count(blink-1, a),
+            [Some(a), None] => self.count(blink-1, a),
             [Some(a), Some(b)] =>
-                self.blink_count(blink-1, a)
-                + self.blink_count(blink-1, b),
+                self.count(blink-1, a)
+                + self.count(blink-1, b),
+            _ => unreachable!()
         };
-        self.cache.borrow_mut().insert((blink,stone), ret);
+        self.cache.insert((blink,stone), ret);
         ret
     }
 }
