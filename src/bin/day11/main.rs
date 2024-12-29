@@ -5,9 +5,9 @@ use blinker::{Blinker, Stone};
 
 fn main() {
     let stones = vec![1 as Stone, 24596, 0, 740994, 60, 803, 8918, 9405859];
-    let mut blinker = Blinker::default();
 
-    let mut blink_counter = |stones: &[Stone], blinks: usize| {
+    let blink_counter = |stones: &[Stone], blinks: usize| {
+        let mut blinker = Blinker::default();
         stones
             .iter()
             .map(|&stone| blinker.count(blinks, stone))
