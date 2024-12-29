@@ -12,35 +12,36 @@ impl Blinker {
         if blink == 0 { return 1 }
         if let Some(&ret) =  self.cache.get(&(blink,stone)) { return ret }
         let ret = match stone.blink() {
-            [Some(a), None] => self.count(blink-1, a),
-            [Some(a), Some(b)] =>
+            BlinkResult::One(a) => self.count(blink-1, a),
+            BlinkResult::Two(a,b) =>
                 self.count(blink-1, a)
                 + self.count(blink-1, b),
-            _ => unreachable!()
         };
         self.cache.insert((blink,stone), ret);
         ret
     }
 }
 
-fn split_stone(stone: Stone) -> [Option<Stone>;2] {
-    let m = (10 as Stone).pow((stone.ilog10() + 1) / 2);
-    [Some(stone / m), Some(stone % m)]
-}
-
 trait Blink {
-    fn blink(self) -> [Option<Stone>;2];
+    fn blink(self) -> BlinkResult;
     fn has_even_digits(&self) -> bool;
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum BlinkResult {
+    One(Stone),
+    Two(Stone,Stone)
+}
+
 impl Blink for Stone {
-    fn blink(self) -> [Option<Stone>;2] {
+    fn blink(self) -> BlinkResult {
         if self == 0 {
-            [Some(1),None]
+            BlinkResult::One(1)
         } else if self.has_even_digits() {
-            split_stone(self)
+            let m = (10 as Stone).pow((self.ilog10() + 1) / 2);
+            BlinkResult::Two(self / m, self % m)
         } else {
-            [Some(self * 2024),None]
+            BlinkResult::One(self * 2024)
         }
     }
     fn has_even_digits(&self) -> bool {
@@ -59,20 +60,17 @@ mod test {
     }
 
     #[test]
-    fn test_split_stone() {
-        assert_eq!(split_stone(1234), [Some(12),Some(34)]);
-        assert_eq!(split_stone(12345), [Some(123), Some(45)]);
-        assert_eq!(split_stone(123456), [Some(123),Some(456)]);
-        assert_eq!(split_stone(120056), [Some(120),Some(56)]);
-    }
-
-    #[test]
     fn test_blink() {
-        assert_eq!(0.blink(), [Some(1),None]);
-        assert_eq!(1.blink(), [Some(2024),None]);
-        assert_eq!(22.blink(), [Some(2),Some(2)]);
-        assert_eq!(3.blink(), [Some(6072),None]);
-        assert_eq!(6072.blink(), [Some(60),Some(72)]);
-        assert_eq!(60.blink(), [Some(6),Some(0)]);
+        assert_eq!(0.blink(), BlinkResult::One(1));
+        assert_eq!(1.blink(), BlinkResult::One(2024));
+        assert_eq!(22.blink(), BlinkResult::Two(2,2));
+        assert_eq!(3.blink(), BlinkResult::One(6072));
+        assert_eq!(6072.blink(), BlinkResult::Two(60,72));
+        assert_eq!(60.blink(), BlinkResult::Two(6,0));
+        assert_eq!(1234.blink(), BlinkResult::Two(12,34));
+        assert_eq!(12345.blink(), BlinkResult::One(24986280));
+        assert_eq!(123456.blink(), BlinkResult::Two(123, 456));
+        assert_eq!(120006.blink(), BlinkResult::Two(120,6));
+        assert_eq!(120000.blink(), BlinkResult::Two(120,0));
     }
 }
