@@ -19,28 +19,30 @@ The `Blink` trait is implemented for the `Stone` type to define the `blink` and 
 pub type Stone = u64;
 
 trait Blink {
-    fn blink(self) -> [Option<Stone>; 2];
+    fn blink(self) -> BlinkResult;
     fn has_even_digits(&self) -> bool;
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum BlinkResult {
+    One(Stone),
+    Two(Stone,Stone)
+}
+
 impl Blink for Stone {
-    fn blink(self) -> [Option<Stone>; 2] {
+    fn blink(self) -> BlinkResult {
         if self == 0 {
-            [Some(1), None]
+            BlinkResult::One(1)
         } else if self.has_even_digits() {
-            split_stone(self)
+            let m = (10 as Stone).pow((self.ilog10() + 1) / 2);
+            BlinkResult::Two(self / m, self % m)
         } else {
-            [Some(self * 2024), None]
+            BlinkResult::One(self * 2024)
         }
     }
     fn has_even_digits(&self) -> bool {
         self.ilog10() % 2 == 1
     }
-}
-
-fn split_stone(stone: Stone) -> [Option<Stone>; 2] {
-    let m = (10 as Stone).pow((stone.ilog10() + 1) / 2);
-    [Some(stone / m), Some(stone % m)]
 }
 ```
 
@@ -65,13 +67,14 @@ The `count` method recursively calculates the number of stones after a specified
 impl Blinker {
     pub(crate) fn count(&mut self, blink: usize, stone: Stone) -> usize {
         if blink == 0 { return 1 }
-        if let Some(&ret) = self.cache.get(&(blink, stone)) { return ret }
+        if let Some(&ret) =  self.cache.get(&(blink,stone)) { return ret }
         let ret = match stone.blink() {
-            [Some(a), None] => self.count(blink-1, a),
-            [Some(a), Some(b)] => self.count(blink-1, a) + self.count(blink-1, b),
-            _ => 0
+            BlinkResult::One(a) => self.count(blink-1, a),
+            BlinkResult::Two(a,b) =>
+                self.count(blink-1, a)
+                + self.count(blink-1, b),
         };
-        self.cache.insert((blink, stone), ret);
+        self.cache.insert((blink,stone), ret);
         ret
     }
 }
@@ -89,9 +92,9 @@ use blinker::{Blinker, Stone};
 
 fn main() {
     let stones = vec![1 as Stone, 24596, 0, 740994, 60, 803, 8918, 9405859];
-    let mut blinker = Blinker::default();
 
-    let mut blink_counter = |stones: &[Stone], blinks: usize| {
+    let blink_counter = |stones: &[Stone], blinks: usize| {
+        let mut blinker = Blinker::default();
         stones
             .iter()
             .map(|&stone| blinker.count(blinks, stone))
@@ -100,12 +103,12 @@ fn main() {
 
     let t = Instant::now();
     let count = blink_counter(&stones, 25);
-    println!("Part 1: {count} stones after blinking 25 times - {:?}", t.elapsed());
+    println!("Part 1: {count} stones after blinking 25 times - {:?}",t.elapsed() );
     assert_eq!(203457, count);
 
     let t = Instant::now();
     let count = blink_counter(&stones, 75);
-    println!("Part 2: {count} stones after blinking 75 times - {:?}", t.elapsed());
+    println!("Part 2: {count} stones after blinking 75 times - {:?}",t.elapsed() );
     assert_eq!(241394363462435, count);
 }
 ```
