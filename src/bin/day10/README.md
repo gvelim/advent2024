@@ -56,10 +56,18 @@ impl TrailHead {
     pub(crate) fn unique_trails() -> TrailHead {
         TrailHead { history: None }
     }
+
     pub(crate) fn trail_heads() -> TrailHead {
         TrailHead { history: Some(HashSet::new()) }
     }
-    pub(crate) fn count_trails(&mut self, map: &TopographicalMap, loc: Location, is_found: fn(u8)->bool) -> Option<usize> {
+
+    pub(crate) fn count_trails(
+        &mut self,
+        map: &TopographicalMap,
+        loc: Location,
+        is_found: impl Fn(u8)->bool + Copy
+    ) -> Option<usize>
+    {
         let &val = map.get(loc)?;
         if is_found(val) { return Some(1) }
         Some(

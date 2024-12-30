@@ -19,31 +19,31 @@ fn main() {
         .unwrap();
 
     let t = Instant::now();
-    let sum = CPU::use_simple_instructions().run(&pgm);
+    let sum = Cpu::use_simple_instructions().run(&pgm);
     println!("part1: {} - {:?}", sum, t.elapsed());
     assert_eq!(185797128, sum);
 
     let t = Instant::now();
-    let sum = CPU::use_enhanced_instructions().run(&pgm);
+    let sum = Cpu::use_enhanced_instructions().run(&pgm);
     println!("part1: {} - {:?}", sum, t.elapsed());
     assert_eq!(89798695, sum)
 }
 
 #[derive(Debug)]
-struct CPU {
+struct Cpu {
     run_state: bool,
     use_enhanced: bool,
 }
 
-impl CPU {
-    fn use_simple_instructions() -> CPU {
-        CPU {
+impl Cpu {
+    fn use_simple_instructions() -> Cpu {
+        Cpu {
             run_state: true,
             use_enhanced: false,
         }
     }
-    fn use_enhanced_instructions() -> CPU {
-        CPU {
+    fn use_enhanced_instructions() -> Cpu {
+        Cpu {
             run_state: true,
             use_enhanced: true,
         }

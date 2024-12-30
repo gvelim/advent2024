@@ -40,7 +40,7 @@ fn main() {
     assert_eq!(obstacles,2262);
 }
 
-fn print_all(start: Location, guard: &Guard, path: &HashMap<Location,DirVector>, obst: Option<&Vec<Location>>) {
+fn _print_all(start: Location, guard: &Guard, path: &HashMap<Location,DirVector>, obst: Option<&Vec<Location>>) {
     println!();
     (0..guard.lab.height()).for_each(|y| {
         (0..guard.lab.width()).for_each(|x| {
