@@ -26,12 +26,13 @@ struct Report {
 impl Report {
     fn validate(r: &[usize]) -> bool {
         let dir = r[0] < r[1];
-        r.windows(2).all(|a| {
-            (1..=3).contains(&(a[0].abs_diff(a[1])))
-                && match dir {
-                    true => a[0] < a[1],
-                    false => a[0] > a[1],
-                }
+        r.windows(2)
+            .all(|a| {
+                (1..=3).contains(&(a[0].abs_diff(a[1])))
+                    && match dir {
+                        true => a[0] < a[1],
+                        false => a[0] > a[1],
+                    }
         })
     }
 

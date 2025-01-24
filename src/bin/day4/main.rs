@@ -40,7 +40,11 @@ fn main() {
     assert_eq!(1965,sum);
 }
 
-fn search_directions<'a>(field: &'a Field<char>, dirs: &'a [DirVector]) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,DirVector)> + 'a> {
+fn search_directions<'a>(
+    field: &'a Field<char>,
+    dirs: &'a [DirVector]
+) -> impl Fn(&'a str, Location) -> Box<dyn Iterator<Item=(Location,DirVector)> + 'a>
+{
     // return a function that takes a world and location
     // and performs a scan on field and set of directions that has be constructed with
     move |word: &'a str, pos: Location| {

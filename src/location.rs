@@ -71,14 +71,13 @@ impl Location {
     pub fn move_relative(&self, distance: DirVector) -> Option<Location> {
         let x = self.0.checked_add_signed(distance.0);
         let y = self.1.checked_add_signed(distance.1);
-        match (x, y) {
-            (Some(x), Some(y)) => Some(Location(x, y)),
-            _ => None
-        }
+        x.zip(y).map(|(x,y)| Location(x,y))
     }
+
     pub fn next(&self, distance: Direction) -> Option<Location> {
         self.move_relative(distance.to_cartesian())
     }
+
     pub fn distance(&self, loc: &Location) -> (usize,usize) {
         (self.0.abs_diff(loc.0), self.1.abs_diff(loc.1))
     }

@@ -42,7 +42,9 @@ impl ManualUpdates {
     }
 
     pub(crate) fn middle(&self) -> Page {
-        self.list.get(self.list.len()/2).map_or(0_usize, |entry| *entry)
+        self.list
+            .get(self.list.len()/2)
+            .map_or(0_usize, |entry| *entry)
     }
 }
 

@@ -17,14 +17,17 @@ impl<T> Field<T> {
             .and_then(|w| w.get(x))
     }
     pub fn get_mut(&mut self, Location(x,y): Location) -> Option<&mut T> {
-        self.cells.get_mut(y)
+        self.cells
+            .get_mut(y)
             .and_then(|w| w.get_mut(x))
     }
     pub fn peek(&self, l: Location, d: DirVector) -> Option<&T> {
-        l.move_relative(d).and_then(|l| self.get(l))
+        l.move_relative(d)
+            .and_then(|l| self.get(l))
     }
     pub fn peek_mut(&mut self, l: Location, d: DirVector) -> Option<&mut T> {
-        l.move_relative(d).and_then(|l| self.get_mut(l))
+        l.move_relative(d)
+            .and_then(|l| self.get_mut(l))
     }
     pub fn within_bounds(&self, l: Location) -> bool {
         l.0 < self.width() && l.1 < self.height()
@@ -34,7 +37,12 @@ impl<T> Field<T> {
             .iter()
             .flat_map(|c| c.iter())
     }
-    pub fn width(&self) -> usize { self.cells.first().map(|v| v.len()).unwrap_or(0) }
+    pub fn width(&self) -> usize {
+        self.cells
+            .first()
+            .map(|v| v.len())
+            .unwrap_or(0)
+    }
     pub fn height(&self) -> usize { self.cells.len() }
     pub fn index_to_cartesian(&self, idx: usize) -> Location {
         Location(idx % self.width(), idx / self.width() )
