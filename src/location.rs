@@ -88,10 +88,8 @@ impl Sub for Location {
 
     fn sub(self, rhs: Self) -> Self::Output {
         match (self.0.checked_sub(rhs.0), self.1.checked_sub(rhs.1)) {
-            (None, None) => None,
-            (None, Some(_)) => None,
-            (Some(_), None) => None,
             (Some(x), Some(y)) => Some(Location(x,y)),
+            _ => None,
         }
     }
 }
