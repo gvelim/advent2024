@@ -1,11 +1,31 @@
-use std::ops::Range;
+use std::{ops::Range, rc::Rc};
 
 fn main() {
     todo!()
 }
 
+
+// Plot structure holds collection of scanlines corresponding to a plot name
+// e.g. "RRRRIICCFF\nRRRRIICCCF" has 4 plots ('R', [0..4,0..4]), ('I', [4..6,4..6]), ('C', [6..8,6..9)], ('F', [8..10,9..10])
+struct Plot {
+    name: char,
+    scanlines: Rc<[Range<u8>]>,
+}
+
+impl Plot {
+    fn area(&self) -> u32 {
+        self.scanlines
+            .iter()
+            .map(|r| r.len() as u32)
+            .sum::<u32>()
+    }
+    fn perimeter(&self) -> u32 {
+        todo!()
+    }
+}
+
 // given a line RRRRIICCFF
-// will return ('R', 0..=3), ('I', 4..=5), ('C', 6..=7), ('F', 8..=9)
+// will return ('R', 0..4), ('I', 4..6), ('C', 6..8), ('F', 8..10)
 fn scan_line(line: &str) -> impl Iterator<Item = (char,Range<u8>)> {
     let mut idx = 0;
     line.as_bytes()
@@ -16,6 +36,7 @@ fn scan_line(line: &str) -> impl Iterator<Item = (char,Range<u8>)> {
             (chunk[0] as char, start..idx)
         })
 }
+
 
 #[test]
 fn test_scan_line() {
