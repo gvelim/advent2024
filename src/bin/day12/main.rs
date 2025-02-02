@@ -48,7 +48,10 @@ impl PartialOrd for PlotSegment {
 impl Ord for PlotSegment  {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match self.0.cmp(&other.0) {
-            std::cmp::Ordering::Equal => self.1.1.start.cmp(&other.1.1.start),
+            std::cmp::Ordering::Equal => match self.1.1.start.cmp(&other.1.1.start) {
+                std::cmp::Ordering::Equal => self.1.1.end.cmp(&other.1.1.end),
+                res => res
+            } ,
             res => res
         }
     }
@@ -56,7 +59,7 @@ impl Ord for PlotSegment  {
 
 impl Debug for PlotSegment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}:{:?}]", self.0, self.1)
+        write!(f, "{}:{:?}", self.0, self.1)
     }
 }
 
@@ -69,8 +72,8 @@ struct Plot {
 }
 
 impl Plot {
-    fn append(&mut self, seg: PlotSegment) {
-        self.rows.insert(seg);
+    fn append(&mut self, seg: PlotSegment) -> bool {
+        self.rows.insert(seg)
     }
     fn is_overlapping(&self, seg: &PlotSegment) -> bool {
         todo!()
