@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Range, rc::Rc};
+use std::{collections::{BTreeSet, HashMap}, fmt::Debug, ops::Range};
 use itertools::Itertools;
 
 fn main() {
@@ -12,54 +12,82 @@ fn main() {
         );
 }
 
-// garden is a collection of scanlines that express plots
+// garden is a collection of plots expressed by a 1 or more overlapping vertical segments
 // parser extracts and composes plots per scanline
 // a plot is composed out of multiple scanlines
 fn parse_garden(input: &str) -> HashMap<char,Plot> {
     input
         .lines()
         .map(plot_ranges)
-        .fold(HashMap::new(), |mut map, prng| {
-            prng.into_group_map()
+        .enumerate()
+        .fold(HashMap::new(), |mut map, (idx,prng)| {
+            prng//.into_group_map()
                 .into_iter()
-                .all(|(plot_name, line_ranges)| {
+                .all(|(plot_name, range)| {
                     map.entry(plot_name)
                         .or_default()
-                        .push(line_ranges);
+                        .append(PlotSegment(idx, (plot_name, range)));
                     true
                 });
             map
         })
 }
 
-// Plot structure holds collection of scanlines corresponding to a plot name
+// single line description of a plot, capturing a range's line position
+#[derive(Default,Eq,PartialEq)]
+struct PlotSegment(usize, Segment);
+
+impl PartialOrd for PlotSegment {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// Order by line then by range start position
+// required for BTreeSet to keep the segments sorted by line location
+impl Ord for PlotSegment  {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.0.cmp(&other.0) {
+            std::cmp::Ordering::Equal => self.1.1.start.cmp(&other.1.1.start),
+            res => res
+        }
+    }
+}
+
+impl Debug for PlotSegment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}:{:?}]", self.0, self.1)
+    }
+}
+
+// Plot structure holds collection of overlapping vertical segments
 // e.g. "RRRRIICCFF\nRRRRIICCCF" has 4 plots of 2 scanlines each
 // ('R', [0..4,0..4]), ('I', [4..6,4..6]), ('C', [6..8,6..9)], ('F', [8..10,9..10])
 #[derive(Debug,Default)]
 struct Plot {
-    rows: Vec<Vec<Range<u8>>>,
+    rows: BTreeSet<PlotSegment>,
 }
 
 impl Plot {
-     fn push(&mut self, ranges: Vec<Range<u8>>) {
-         self.rows.push(ranges);
-     }
-    fn area(&self) -> u32 {
-        self.rows
-            .iter()
-            .map(|ranges|
-                ranges.iter().fold(0, |acc,rng| acc + rng.len() as u32)
-            )
-            .sum::<u32>()
+    fn append(&mut self, seg: PlotSegment) {
+        self.rows.insert(seg);
     }
-    fn perimeter(&self) -> u32 {
+    fn is_overlapping(&self, seg: &PlotSegment) -> bool {
         todo!()
+    }
+    fn area(&self) -> usize {
+        self.rows.iter()
+            .map(|seg| seg.1.1.len())
+            .sum::<usize>()
     }
 }
 
+// Segment covers the start/end position of a plot at a given line
+type Segment = (char, Range<u8>);
+
 // given a line RRRRIICCFF
 // will return ('R', 0..4), ('I', 4..6), ('C', 6..8), ('F', 8..10)
-fn plot_ranges(line: &str) -> impl Iterator<Item = (char,Range<u8>)> {
+fn plot_ranges(line: &str) -> impl Iterator<Item = Segment> {
     let mut idx = 0;
     line.as_bytes()
         .chunk_by(|a,b| a == b)
