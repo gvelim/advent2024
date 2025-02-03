@@ -1,5 +1,4 @@
-use std::{collections::{BTreeSet, HashMap}, fmt::Debug, ops::Range};
-use itertools::Itertools;
+use std::{collections::{BTreeMap, BTreeSet, HashMap}, fmt::Debug, ops::Range};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
@@ -34,8 +33,14 @@ fn parse_garden(input: &str) -> HashMap<char,Plot> {
 }
 
 // single line description of a plot, capturing a range's line position
-#[derive(Default,Eq,PartialEq)]
+#[derive(Default,Eq, PartialEq)]
 struct PlotSegment(usize, Segment);
+
+impl PlotSegment {
+    fn is_overlaping(&self, other: &Self) -> bool {
+        self.1.1.start < other.1.1.end && self.1.1.end > other.1.1.start
+    }
+}
 
 impl PartialOrd for PlotSegment {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -73,10 +78,12 @@ struct Plot {
 
 impl Plot {
     fn append(&mut self, seg: PlotSegment) -> bool {
-        self.rows.insert(seg)
+        todo!()
     }
     fn is_overlapping(&self, seg: &PlotSegment) -> bool {
-        todo!()
+        self.rows.last()
+            .map(|last| last.is_overlaping(seg))
+            .unwrap_or(false)
     }
     fn area(&self) -> usize {
         self.rows.iter()
@@ -101,14 +108,48 @@ fn plot_ranges(line: &str) -> impl Iterator<Item = Segment> {
         })
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_scan_line() {
-    let line = "RRRRIICCFF";
-    let mut iter = plot_ranges(line);
-    assert_eq!(iter.next(), Some(('R', 0u8..4)));
-    assert_eq!(iter.next(), Some(('I', 4u8..6)));
-    assert_eq!(iter.next(), Some(('C', 6u8..8)));
-    assert_eq!(iter.next(), Some(('F', 8u8..10)));
-    assert_eq!(iter.next(), None);
+    #[test]
+    fn test_plot_append_segment() {
+        let mut plot = Plot::default();
+        let seg1 = PlotSegment(0, ('R', 0..5));
+        let seg2 = PlotSegment(1, ('R', 4..6));
+        let seg3 = PlotSegment(1, ('R', 6..9));
+        let seg4 = PlotSegment(1, ('R', 8..10));
+        assert!(plot.append(seg1));
+        assert!(plot.append(seg2));
+        assert!(!plot.append(seg3));
+        assert!(plot.append(seg4));
+        println!("{:?}",plot);
+    }
+
+    #[test]
+    fn test_plotsegment_overlap() {
+        let seg1 = PlotSegment(0, ('R', 2..4));
+        let seg2 = PlotSegment(1, ('R', 3..6));
+        let seg3 = PlotSegment(1, ('R', 0..3));
+        let seg4 = PlotSegment(1, ('R', 4..6));
+        let seg5 = PlotSegment(1, ('R', 0..2));
+        assert!(seg1.is_overlaping(&seg1));
+        assert!(seg1.is_overlaping(&seg2));
+        assert!(seg1.is_overlaping(&seg3));
+        assert!(!seg2.is_overlaping(&seg3));
+        assert!(!seg3.is_overlaping(&seg2));
+        assert!(!seg1.is_overlaping(&seg4));
+        assert!(!seg1.is_overlaping(&seg5));
+    }
+
+    #[test]
+    fn test_scan_line() {
+        let line = "RRRRIICCFF";
+        let mut iter = plot_ranges(line);
+        assert_eq!(iter.next(), Some(('R', 0u8..4)));
+        assert_eq!(iter.next(), Some(('I', 4u8..6)));
+        assert_eq!(iter.next(), Some(('C', 6u8..8)));
+        assert_eq!(iter.next(), Some(('F', 8u8..10)));
+        assert_eq!(iter.next(), None);
+    }
 }
