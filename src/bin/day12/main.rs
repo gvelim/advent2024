@@ -73,12 +73,16 @@ impl Debug for PlotSegment {
 // ('R', [0..4,0..4]), ('I', [4..6,4..6]), ('C', [6..8,6..9)], ('F', [8..10,9..10])
 #[derive(Debug,Default)]
 struct Plot {
+    id: u8,
+    plant: char,
     rows: BTreeSet<PlotSegment>,
 }
 
 impl Plot {
+    /// Append a segment to the plot as long as it matches the plant type
     fn append(&mut self, seg: PlotSegment) -> bool {
-        todo!()
+        if self.plant != seg.1.0 { return false };
+        self.is_overlapping(&seg) && self.rows.insert(seg)
     }
     fn is_overlapping(&self, seg: &PlotSegment) -> bool {
         self.rows.last()
@@ -114,16 +118,15 @@ mod tests {
 
     #[test]
     fn test_plot_append_segment() {
-        let mut plot = Plot::default();
+        let mut plot = Plot { id: 1, plant: 'R', rows: BTreeSet::from_iter([PlotSegment(0,('R',0..2))]) };
         let seg1 = PlotSegment(0, ('R', 0..5));
         let seg2 = PlotSegment(1, ('R', 4..6));
         let seg3 = PlotSegment(1, ('R', 6..9));
         let seg4 = PlotSegment(1, ('R', 8..10));
-        assert!(plot.append(seg1));
-        assert!(plot.append(seg2));
-        assert!(!plot.append(seg3));
-        assert!(plot.append(seg4));
-        println!("{:?}",plot);
+        assert!(plot.append(seg1), "{:?}",plot);
+        assert!(plot.append(seg2), "{:?}",plot);
+        assert!(!plot.append(seg3), "{:?}",plot);
+        assert!(!plot.append(seg4), "{:?}",plot);
     }
 
     #[test]
