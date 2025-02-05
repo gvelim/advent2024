@@ -1,40 +1,50 @@
-use std::{collections::{BTreeSet, HashMap}, fmt::Debug, ops::Range};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt::Debug,
+    ops::Range,
+};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
 
-    let garden: HashMap::<char,Plot> = parse_garden(&input);
+    let garden: HashMap<char, Plot> = parse_garden(&input);
 
-    garden.iter()
-        .for_each(|(k,v)|
-            println!("{}: {:?} = {}", k, v, v.area())
-        );
+    garden
+        .iter()
+        .for_each(|(k, v)| println!("{}: {:?} = {}", k, v, v.area()));
 }
 
 // garden is a collection of plots expressed by a 1 or more overlapping vertical segments
 // parser extracts and composes plots per scanline
 // a plot is composed out of multiple scanlines
-fn parse_garden(input: &str) -> HashMap<char,Plot> {
+fn parse_garden(input: &str) -> HashMap<char, Plot> {
+
     input
         .lines()
         .map(plot_ranges)
         .enumerate()
-        .fold(HashMap::new(), |mut map, (idx,prng)| {
-            prng//.into_group_map()
-                .into_iter()
-                .for_each(|seg| {
-                    map.entry(seg.0)
-                        .or_insert(
-                             Plot { plant: seg.0, rows: BTreeSet::from_iter([PlotSegment(idx, seg.clone())]) }
-                        )
-                        .append(PlotSegment(idx, seg.clone()));
-                });
-            map
+        .fold(HashMap::new(), |mut garden, (line, plots)| {
+            let mut current = None;
+            for plot in plots {
+                let seg = PlotSegment(line, plot);
+                let plant = plot.0;
+                let plot = garden.entry(plant).or_insert_with(Plot::default);
+                if let Some(ref mut current) = current {
+                    if plot.is_overlapping(current) {
+                        plot.append(seg);
+                    } else {
+                        current = None;
+                    }
+                } else {
+                    current = Some(seg);
+                }
+            }
+            garden
         })
 }
 
 // single line description of a plot, capturing a range's line position
-#[derive(Default,Eq, PartialEq, Clone)]
+#[derive(Default, Eq, PartialEq, Clone)]
 struct PlotSegment(usize, Segment);
 
 impl PlotSegment {
@@ -51,9 +61,10 @@ impl PartialOrd for PlotSegment {
 
 // Order by line then by range start position
 // required for BTreeSet to keep the segments sorted by line location
-impl Ord for PlotSegment  {
+impl Ord for PlotSegment {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.cmp(&other.0)
+        self.0
+            .cmp(&other.0)
             .then_with(|| self.1.1.start.cmp(&other.1.1.start))
             .then_with(|| self.1.1.end.cmp(&other.1.1.end))
     }
@@ -68,7 +79,7 @@ impl Debug for PlotSegment {
 // Plot structure holds collection of overlapping vertical segments
 // e.g. "RRRRIICCFF\nRRRRIICCCF" has 4 plots of 2 scanlines each
 // ('R', [0..4,0..4]), ('I', [4..6,4..6]), ('C', [6..8,6..9)], ('F', [8..10,9..10])
-#[derive(Debug,Default)]
+#[derive(Debug, Default)]
 struct Plot {
     plant: char,
     rows: BTreeSet<PlotSegment>,
@@ -77,18 +88,20 @@ struct Plot {
 impl Plot {
     /// Append a segment to the plot as long as it matches the plant type
     fn append(&mut self, seg: PlotSegment) -> bool {
-        if self.plant != seg.1.0 { return false };
-        self.is_overlapping(&seg) && self.rows.insert(seg)
+        if self.plant != seg.1.0 {
+            return false;
+        } else {
+            self.rows.insert(seg)
+        }
     }
     fn is_overlapping(&self, seg: &PlotSegment) -> bool {
-        self.rows.last()
+        self.rows
+            .last()
             .map(|last| last.is_overlaping(seg))
             .unwrap_or(false)
     }
     fn area(&self) -> usize {
-        self.rows.iter()
-            .map(|seg| seg.1.1.len())
-            .sum::<usize>()
+        self.rows.iter().map(|seg| seg.1.1.len()).sum::<usize>()
     }
 }
 
@@ -112,7 +125,7 @@ type Segment = (char, Range<u8>);
 fn plot_ranges(line: &str) -> impl Iterator<Item = Segment> {
     let mut idx = 0;
     line.as_bytes()
-        .chunk_by(|a,b| a == b)
+        .chunk_by(|a, b| a == b)
         .map(move |chunk| {
             let start = idx;
             idx += chunk.len() as u8;
@@ -126,15 +139,18 @@ mod tests {
 
     #[test]
     fn test_plot_append_segment() {
-        let mut plot = Plot { plant: 'R', rows: BTreeSet::from_iter([PlotSegment(0,('R',0..2))]) };
-        let seg1 = PlotSegment(0, ('R', 0..5));
-        let seg2 = PlotSegment(1, ('R', 4..6));
-        let seg3 = PlotSegment(1, ('R', 6..9));
-        let seg4 = PlotSegment(1, ('A', 5..10));
-        assert!(plot.append(seg1), "{:?}",plot);
-        assert!(plot.append(seg2), "{:?}",plot);
-        assert!(!plot.append(seg3), "{:?}",plot);
-        assert!(!plot.append(seg4), "{:?}",plot);
+        let seg1 = PlotSegment(1, ('R', 0..5));
+        let seg2 = PlotSegment(2, ('R', 4..6));
+        let seg3 = PlotSegment(3, ('R', 6..9));
+        let seg4 = PlotSegment(4, ('A', 5..10));
+
+        let mut plot = Plot {plant: 'R', rows: BTreeSet::new()};
+        plot.append(PlotSegment(0,('R',0..2)));
+        assert!(plot.append(seg1), "{:?}", plot);
+        assert!(plot.append(seg2), "{:?}", plot);
+        assert!(plot.append(seg3), "{:?}", plot);
+        assert!(!plot.append(seg4), "{:?}", plot);
+        println!("{:?}",plot);
     }
 
     #[test]
