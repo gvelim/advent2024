@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet, HashMap}, fmt::Debug, ops::Range};
+use std::{collections::{BTreeSet, HashMap}, fmt::Debug, ops::Range};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
@@ -22,18 +22,19 @@ fn parse_garden(input: &str) -> HashMap<char,Plot> {
         .fold(HashMap::new(), |mut map, (idx,prng)| {
             prng//.into_group_map()
                 .into_iter()
-                .all(|(plot_name, range)| {
-                    map.entry(plot_name)
-                        .or_default()
-                        .append(PlotSegment(idx, (plot_name, range)));
-                    true
+                .for_each(|seg| {
+                    map.entry(seg.0)
+                        .or_insert(
+                             Plot { plant: seg.0, rows: BTreeSet::from_iter([PlotSegment(idx, seg.clone())]) }
+                        )
+                        .append(PlotSegment(idx, seg.clone()));
                 });
             map
         })
 }
 
 // single line description of a plot, capturing a range's line position
-#[derive(Default,Eq, PartialEq)]
+#[derive(Default,Eq, PartialEq, Clone)]
 struct PlotSegment(usize, Segment);
 
 impl PlotSegment {
@@ -52,13 +53,9 @@ impl PartialOrd for PlotSegment {
 // required for BTreeSet to keep the segments sorted by line location
 impl Ord for PlotSegment  {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match self.0.cmp(&other.0) {
-            std::cmp::Ordering::Equal => match self.1.1.start.cmp(&other.1.1.start) {
-                std::cmp::Ordering::Equal => self.1.1.end.cmp(&other.1.1.end),
-                res => res
-            } ,
-            res => res
-        }
+        self.0.cmp(&other.0)
+            .then_with(|| self.1.1.start.cmp(&other.1.1.start))
+            .then_with(|| self.1.1.end.cmp(&other.1.1.end))
     }
 }
 
@@ -73,7 +70,6 @@ impl Debug for PlotSegment {
 // ('R', [0..4,0..4]), ('I', [4..6,4..6]), ('C', [6..8,6..9)], ('F', [8..10,9..10])
 #[derive(Debug,Default)]
 struct Plot {
-    id: u8,
     plant: char,
     rows: BTreeSet<PlotSegment>,
 }
@@ -93,6 +89,18 @@ impl Plot {
         self.rows.iter()
             .map(|seg| seg.1.1.len())
             .sum::<usize>()
+    }
+}
+
+impl PartialOrd for Plot {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.plant.cmp(&other.plant))
+    }
+}
+
+impl PartialEq for Plot {
+    fn eq(&self, other: &Self) -> bool {
+        self.plant == other.plant
     }
 }
 
@@ -118,11 +126,11 @@ mod tests {
 
     #[test]
     fn test_plot_append_segment() {
-        let mut plot = Plot { id: 1, plant: 'R', rows: BTreeSet::from_iter([PlotSegment(0,('R',0..2))]) };
+        let mut plot = Plot { plant: 'R', rows: BTreeSet::from_iter([PlotSegment(0,('R',0..2))]) };
         let seg1 = PlotSegment(0, ('R', 0..5));
         let seg2 = PlotSegment(1, ('R', 4..6));
         let seg3 = PlotSegment(1, ('R', 6..9));
-        let seg4 = PlotSegment(1, ('R', 8..10));
+        let seg4 = PlotSegment(1, ('A', 5..10));
         assert!(plot.append(seg1), "{:?}",plot);
         assert!(plot.append(seg2), "{:?}",plot);
         assert!(!plot.append(seg3), "{:?}",plot);
