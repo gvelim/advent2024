@@ -4,43 +4,70 @@ use std::{
     ops::Range,
 };
 
+use itertools::Itertools;
+
 fn main() {
     let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
 
-    let garden: HashMap<char, Plot> = parse_garden(&input);
+    let garden: Vec<Plot> = parse_garden(&input);
 
     garden
         .iter()
-        .for_each(|(k, v)| println!("{}: {:?} = {}", k, v, v.area()));
+        .for_each(|v| println!("{:?} = {}", v, v.area()));
 }
 
 // garden is a collection of plots expressed by a 1 or more overlapping vertical segments
 // parser extracts and composes plots per scanline
 // a plot is composed out of multiple scanlines
-fn parse_garden(input: &str) -> HashMap<char, Plot> {
+fn parse_garden(input: &str) -> Vec<Plot> {
+    // parsing logic is as follows:
+    // for each line of plant segments(plant type, range)
+    // match plots to plant segments based on same plant type
+        // during:
+        // if plot segment overlaps a plot then it becomes part of a plot
+        // if a plot segment overlaps one or more plots then the plots collapse into one
 
-    input
-        .lines()
-        .map(plot_ranges)
-        .enumerate()
-        .fold(HashMap::new(), |mut garden, (line, plots)| {
-            let mut current = None;
-            for plot in plots {
-                let seg = PlotSegment(line, plot);
-                let plant = plot.0;
-                let plot = garden.entry(plant).or_insert_with(Plot::default);
-                if let Some(ref mut current) = current {
-                    if plot.is_overlapping(current) {
-                        plot.append(seg);
-                    } else {
-                        current = None;
-                    }
-                } else {
-                    current = Some(seg);
-                }
+        // end:
+        // Segments not overlapping form a new plot
+        // Plots that didn't overlap with any segment are complete and returned
+    let mut garden: HashMap<char, Vec<(bool,Plot)>> = HashMap::new();
+    let mut output: Vec<Plot> = Vec::new();
+
+    for (line_num, line) in input.lines().enumerate() {
+        let segments: Vec<PlotSegment> = plot_ranges(line)
+            .map(|seg| PlotSegment(line_num, seg))
+            .collect();
+
+        for segment in segments {
+            let plant_type = segment.1.0;
+
+            // Get plots for this plant type
+            // if none, create a plot and continue with next segment
+            if let Some(plots) = garden.get_mut(&plant_type) {
+                // check for segment & plots overlaps
+                let result = plots
+                    .iter_mut()
+                    .map(|p| {
+                        p.0 = p.1.is_overlapping(&segment);
+                        p
+                    })
+                    .into_group_map_by(|d| d.0);
+
+                // remove and push to out any plots that didn't overlap
+                println!("{:?}", result);
+                // merge plots overlapping with segment (same plot)
             }
-            garden
-        })
+            else {
+                garden
+                    .entry(plant_type)
+                    .or_insert( vec![(false, Plot {plant: plant_type, rows: BTreeSet::new()})])
+                    [0].1.append(segment.clone());
+                continue;
+            }
+        }
+    }
+
+    output
 }
 
 // single line description of a plot, capturing a range's line position
@@ -96,9 +123,10 @@ impl Plot {
     }
     fn is_overlapping(&self, seg: &PlotSegment) -> bool {
         self.rows
-            .last()
-            .map(|last| last.is_overlaping(seg))
-            .unwrap_or(false)
+            .range(
+                PlotSegment(seg.0-1, seg.1.clone())..PlotSegment(seg.0, seg.1.clone())
+            )
+            .any(|last| last.is_overlaping(seg))
     }
     fn area(&self) -> usize {
         self.rows.iter().map(|seg| seg.1.1.len()).sum::<usize>()
