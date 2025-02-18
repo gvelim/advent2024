@@ -21,53 +21,23 @@ fn main() {
 // a plot is composed out of multiple scanlines
 fn parse_garden(input: &str) -> Vec<Plot> {
     // parsing logic is as follows:
+    // set active map structures 1 & 2; holding (K,V) as (active segment, ID)
+    // set garden map structure; holding (K,V) as (ID, Vec<Segment>)
     // for each line of plant segments(plant type, range)
-    // match plots to plant segments based on same plant type
-        // during:
-        // if plot segment overlaps a plot then it becomes part of a plot
-        // if a plot segment overlaps one or more plots then the plots collapse into one
+    // for each plant segment
+    // does it match (overlapping range & plant type) any active segment in map 1
+    // if not, then push a new (K,V) (segment, ID) into active map collection 2
+    // if yes, then
+    // does it match one or more active segments ?
+    // if yes, then
+    // pop active segment(s) from active map and push new segment using same ID
+    // push removed segments into a garden map against same ID
+    // are there any active segments left without match ?
+    // if yes, then move them into garden map against same ID
+    // swap active map 1 with active map 2, so map 2 is the new active map
+    //
 
-        // end:
-        // Segments not overlapping form a new plot
-        // Plots that didn't overlap with any segment are complete and returned
-    let mut garden: HashMap<char, Vec<(bool,Plot)>> = HashMap::new();
-    let mut output: Vec<Plot> = Vec::new();
-
-    for (line_num, line) in input.lines().enumerate() {
-        let segments: Vec<PlotSegment> = plot_ranges(line)
-            .map(|seg| PlotSegment(line_num, seg))
-            .collect();
-
-        for segment in segments {
-            let plant_type = segment.1.0;
-
-            // Get plots for this plant type
-            // if none, create a plot and continue with next segment
-            if let Some(plots) = garden.get_mut(&plant_type) {
-                // check for segment & plots overlaps
-                let result = plots
-                    .iter_mut()
-                    .map(|p| {
-                        p.0 = p.1.is_overlapping(&segment);
-                        p
-                    })
-                    .into_group_map_by(|d| d.0);
-
-                // remove and push to out any plots that didn't overlap
-                println!("{:?}", result);
-                // merge plots overlapping with segment (same plot)
-            }
-            else {
-                garden
-                    .entry(plant_type)
-                    .or_insert( vec![(false, Plot {plant: plant_type, rows: BTreeSet::new()})])
-                    [0].1.append(segment.clone());
-                continue;
-            }
-        }
-    }
-
-    output
+    Vec::new()
 }
 
 // single line description of a plot, capturing a range's line position
@@ -75,7 +45,7 @@ fn parse_garden(input: &str) -> Vec<Plot> {
 struct PlotSegment(usize, Segment);
 
 impl PlotSegment {
-    fn is_overlaping(&self, other: &Self) -> bool {
+    fn is_overlapping(&self, other: &Self) -> bool {
         self.1.1.start < other.1.1.end && self.1.1.end > other.1.1.start
     }
 }
@@ -137,7 +107,7 @@ impl Plot {
         self.rows
             .range(start ..= end)
             .inspect(|p| println!("iter: {:?}",p))
-            .any(|last| last.is_overlaping(seg))
+            .any(|last| last.is_overlapping(seg))
     }
     fn area(&self) -> usize {
         self.rows.iter().map(|seg| seg.1.1.len()).sum::<usize>()
@@ -217,13 +187,13 @@ mod tests {
         let seg3 = PlotSegment(1, ('R', 0..3));
         let seg4 = PlotSegment(2, ('R', 4..6));
         let seg5 = PlotSegment(2, ('R', 0..2));
-        assert!(seg1.is_overlaping(&seg1));
-        assert!(seg1.is_overlaping(&seg2));
-        assert!(seg1.is_overlaping(&seg3));
-        assert!(!seg2.is_overlaping(&seg3));
-        assert!(!seg3.is_overlaping(&seg2));
-        assert!(!seg1.is_overlaping(&seg4));
-        assert!(!seg1.is_overlaping(&seg5));
+        assert!(seg1.is_overlapping(&seg1));
+        assert!(seg1.is_overlapping(&seg2));
+        assert!(seg1.is_overlapping(&seg3));
+        assert!(!seg2.is_overlapping(&seg3));
+        assert!(!seg3.is_overlapping(&seg2));
+        assert!(!seg1.is_overlapping(&seg4));
+        assert!(!seg1.is_overlapping(&seg5));
     }
 
     #[test]
