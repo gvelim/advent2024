@@ -28,11 +28,9 @@ fn parse_garden(input: &str) -> Vec<Plot> {
     // does it match (overlapping range & plant type) any active segment in map 1
     // if not, then push a new (K,V) (segment, ID) into active map collection 2
     // if yes, then
-    // does it match one or more active segments ?
-    // if yes, then
-    // pop active segment(s) from active map and push new segment using same ID
-    // push removed segments into a garden map against same ID
-    // are there any active segments left without match ?
+    // pop active segment(s) and push into garden map using same ID
+    // push new segment to active mapusing same ID
+    // Check, are there any map 1 active segments left without match ?
     // if yes, then move them into garden map against same ID
     // swap active map 1 with active map 2, so map 2 is the new active map
     //
