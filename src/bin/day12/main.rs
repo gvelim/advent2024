@@ -1,7 +1,6 @@
 mod segment;
 
 use std::collections::{BTreeSet, HashMap};
-
 use segment::{extract_ranges, PlotSegment};
 
 fn main() {
@@ -23,22 +22,22 @@ fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
     let mut actseg1: Vec<(PlotSegment, usize, bool)> = Vec::new();
     let mut actseg2: Vec<(PlotSegment, usize, bool)> = Vec::new();
 
-    // set garden map structure; holding (K,V) as (ID, Vec<Segment>)
-    let garden = HashMap::new();
-
     // id generator fn()
     let mut get_id = (|mut start: usize| move || { start += 1; start })(0);
+    // line counter
+    let mut line = 0;
 
-    // for each line of plant segments(plant type, range)
-    input.lines()
+    let mut garden = input.lines()
         .map(extract_ranges)
         .enumerate()
-        .fold(garden, |mut g, (l, mut segments)| {
+        // for each line of plant segments(plant type, range)
+        .fold(HashMap::new(), |mut garden, (l, mut segments)| {
+            line = l;
 
             // for each plant segment
             while let Some(segment) = segments.next() {
 
-                // find all indeces of the active segments in map 1 that (a) overlap with && (b) have same plant type
+                // find within map 1, all active segments indeces that (a) overlap with && (b) have same plant type and flag those as matched
                 let mut matched = actseg1
                     .iter_mut()
                     .enumerate()
@@ -52,34 +51,41 @@ fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
                     })
                     .collect::<Vec<_>>();
 
-                // if empty, then push a new (K,V) (segment, ID) into active map collection 2 and process next segment
+                // if empty, then push a new (K,V) (segment, ID) into active segments map 2 and process next segment
                 if matched.is_empty() {
                     actseg2.push((segment, get_id() , false));
                 } else {
-                    // push new segment to active map with same ID
+                    // push new segment to active segments map 2 using same ID
                     let id = actseg1[ matched[0] ].1;
                     actseg2.push((segment, id, false));
                     // pop active segment(s) and push into garden map using same ID and current line number
                     while let Some(index) = matched.pop() {
-                        g.entry(id)
+                        garden.entry(id)
                             .or_insert(BTreeSet::new())
-                            .insert((l, actseg1[index].0.clone()));
+                            .insert((line, actseg1[index].0.clone()));
                     }
                 }
             }
 
-            // Move unmatched active segments to the garden map using same ID and line number
+            // Empty map 1 and move any unmatched active segments to the garden map using same ID and current line number
             while let Some((seg, id, m)) = actseg1.pop() {
                 if !m {
-                    g.entry(id).or_insert(BTreeSet::new()).insert((l, seg));
+                    garden.entry(id).or_insert(BTreeSet::new()).insert((line, seg));
                 }
             }
 
             // swap active map 1 with active map 2, so map 2 is the new active map
             std::mem::swap(&mut actseg1, &mut actseg2);
-            g
-        })
+            garden
+        });
+
+    // Move any leftover active segments to the garden map
+    while let Some((seg, id, _)) = actseg1.pop() {
+        garden.entry(id).or_insert(BTreeSet::new()).insert((line+1, seg));
+    }
+
     // return garden map
+    garden
 }
 
 fn area(rows: &BTreeSet<(usize,PlotSegment)>) -> usize {
