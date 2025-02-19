@@ -5,9 +5,6 @@ use std::{ops::Range,fmt::Debug};
 pub(super) struct PlotSegment(char, Range<u8>);
 
 impl PlotSegment {
-    pub fn new(plant: char, range: Range<u8>) -> Self {
-        PlotSegment(plant, range)
-    }
     pub fn plant(&self) -> char {
         self.0
     }
