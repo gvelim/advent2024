@@ -25,16 +25,15 @@ fn parse_garden(input: &str) -> Vec<Plot> {
     // set active map structures 1 & 2; holding (K,V) as (active segment, ID)
     // set garden map structure; holding (K,V) as (ID, Vec<Segment>)
     // for each line of plant segments(plant type, range)
-    // for each plant segment
-    // does it match (overlapping range & plant type) any active segment in map 1
-    // if not, then push a new (K,V) (segment, ID) into active map collection 2
-    // if yes, then
-    // pop active segment(s) and push into garden map using same ID
-    // push new segment to active mapusing same ID
-    // Check, are there any map 1 active segments left without match ?
-    // if yes, then move them into garden map against same ID
-    // swap active map 1 with active map 2, so map 2 is the new active map
-    //
+        // for each plant segment
+            // find all active segments in map 1 that (a) overlap with && (b) have same plant type
+            // if empty, then push a new (K,V) (segment, ID) into active map collection 2 and process next segment
+            // For each active segment(s) matched
+                // pop active segment(s) and push into garden map using same ID and line number
+                // push new segment to active map with same ID
+        // Move remaining unmatched active segments to the garden map using same ID and line number
+        // swap active map 1 with active map 2, so map 2 is the new active map
+    // return garden map
 
     Vec::new()
 }
@@ -63,15 +62,6 @@ impl Plot {
             false
         }
     }
-    fn is_overlapping(&self, seg: &PlotSegment) -> bool {
-        let start = PlotSegment(seg.plant(), 0 .. 1);
-        let end = PlotSegment(seg.plant(), u8::MAX-1 .. u8::MAX);
-        println!("Cmp: {:?}, {:?}, {:?}",seg, start, end);
-        self.rows
-            .range(start ..= end)
-            .inspect(|p| println!("iter: {:?}",p))
-            .any(|last| last.1.is_overlapping(seg))
-    }
     fn area(&self) -> usize {
         self.rows.iter().map(|seg| seg.1.len()).sum::<usize>()
     }
@@ -95,36 +85,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_plot_overlap() {
-        let mut plot = Plot::new('R');
-        let seg1 = PlotSegment(0, ('R', 0..4));
-        let seg2 = PlotSegment(0, ('R', 5..8));
-        let seg3 = PlotSegment(1, ('R', 2..6));
-        let seg4 = PlotSegment(2, ('R', 6..9));
-        let seg5 = PlotSegment(3, ('R', 5..10));
-
-        assert!(plot.append(seg1));
-        assert!(!plot.is_overlapping(&seg2));
-        plot.append(seg2);
-        assert!(plot.is_overlapping(&seg3));
-        plot.append(seg3);
-        assert!(!plot.is_overlapping(&seg4));
-        assert!(!plot.is_overlapping(&seg5));
-    }
-
-    #[test]
     fn test_plot_append_segment() {
-        let seg1 = PlotSegment(1, ('R', 0..5));
-        let seg2 = PlotSegment(2, ('R', 4..6));
-        let seg3 = PlotSegment(3, ('R', 6..9));
-        let seg4 = PlotSegment(4, ('A', 5..10));
+        let seg1 = PlotSegment::new('R', 0..5);
+        let seg2 = PlotSegment::new('R', 4..6);
+        let seg3 = PlotSegment::new('R', 6..9);
+        let seg4 = PlotSegment::new('A', 5..10);
 
-        let mut plot = Plot {plant: 'R', rows: BTreeSet::new()};
-        plot.append(PlotSegment(0,('R',0..2)));
-        assert!(plot.append(seg1), "{:?}", plot);
-        assert!(plot.append(seg2), "{:?}", plot);
-        assert!(plot.append(seg3), "{:?}", plot);
-        assert!(!plot.append(seg4), "{:?}", plot);
+        let mut plot = Plot::new('R');
+        plot.append(0,PlotSegment::new('R',0..2));
+        assert!(plot.append(1,seg1), "{:?}", plot);
+        assert!(plot.append(2,seg2), "{:?}", plot);
+        assert!(plot.append(3,seg3), "{:?}", plot);
+        assert!(!plot.append(4,seg4), "{:?}", plot);
         println!("{:?}",plot);
     }
 }

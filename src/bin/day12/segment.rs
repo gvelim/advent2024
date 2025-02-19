@@ -5,6 +5,9 @@ use std::{ops::Range,fmt::Debug};
 pub(super) struct PlotSegment(char, Range<u8>);
 
 impl PlotSegment {
+    pub fn new(plant: char, range: Range<u8>) -> Self {
+        PlotSegment(plant, range)
+    }
     pub fn plant(&self) -> char {
         self.0
     }
@@ -47,7 +50,7 @@ impl Debug for PlotSegment {
 
 // given a line RRRRIICCFF
 // will return ('R', 0..4), ('I', 4..6), ('C', 6..8), ('F', 8..10)
-pub(super) fn plot_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
+pub(super) fn extract_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
     let mut idx = 0;
     line.as_bytes()
         .chunk_by(|a, b| a == b)
@@ -82,7 +85,7 @@ mod tests {
     #[test]
     fn test_scan_line() {
         let line = "RRRRIICCFF";
-        let mut iter = plot_ranges(line);
+        let mut iter = extract_ranges(line);
         assert_eq!(iter.next(), Some(PlotSegment('R', 0u8..4)));
         assert_eq!(iter.next(), Some(PlotSegment('I', 4u8..6)));
         assert_eq!(iter.next(), Some(PlotSegment('C', 6u8..8)));
