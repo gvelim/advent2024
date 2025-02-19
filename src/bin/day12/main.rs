@@ -1,11 +1,11 @@
 mod segment;
 
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashMap},
     fmt::Debug
 };
 
-use segment::PlotSegment;
+use segment::{extract_ranges, PlotSegment};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
@@ -20,22 +20,47 @@ fn main() {
 // garden is a collection of plots expressed by a 1 or more overlapping vertical segments
 // parser extracts and composes plots per scanline
 // a plot is composed out of multiple scanlines
-fn parse_garden(input: &str) -> Vec<Plot> {
+fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
     // parsing logic is as follows:
     // set active map structures 1 & 2; holding (K,V) as (active segment, ID)
+    let mut actseg1: Vec<(PlotSegment, usize)> = Vec::new();
+    let mut actseg2: Vec<(PlotSegment, usize)> = Vec::new();
     // set garden map structure; holding (K,V) as (ID, Vec<Segment>)
+    let mut garden = HashMap::new();
     // for each line of plant segments(plant type, range)
-        // for each plant segment
-            // find all active segments in map 1 that (a) overlap with && (b) have same plant type
-            // if empty, then push a new (K,V) (segment, ID) into active map collection 2 and process next segment
-            // For each active segment(s) matched
-                // pop active segment(s) and push into garden map using same ID and line number
-                // push new segment to active map with same ID
-        // Move remaining unmatched active segments to the garden map using same ID and line number
-        // swap active map 1 with active map 2, so map 2 is the new active map
+    input.lines()
+        .map(extract_ranges)
+        .enumerate()
+        .fold(garden, |mut g, (idx, segments)| {
+            let mut segments = segments.enumerate();
+            // for each plant segment
+            while let Some((id, segment)) = segments.next() {
+                // find all active segments in map 1 that (a) overlap with && (b) have same plant type
+                let mut matched = actseg1
+                    .iter()
+                    .filter(|(seg, _)| seg.plant() == segment.plant() && seg.is_overlapping(&segment))
+                    .collect::<Vec<_>>();
+                // if empty, then push a new (K,V) (segment, ID) into active map collection 2 and process next segment
+                if matched.is_empty() {
+                    actseg2.push((segment, idx+id));
+                } else {
+                    // push new segment to active map with same ID
+                    actseg2.push((segment, idx+id));
+                    // pop active segment(s) and push into garden map using same ID and line number
+                    while let Some(aseg) = matched.pop() {
+                        g.entry(aseg.1).or_insert(BTreeSet::new()).insert((idx, aseg.0));
+                    }
+                }
+            }
+            // Move remaining unmatched active segments to the garden map using same ID and line number
+            while let Some(aseg) = actseg1.pop() {
+                g.entry(aseg.1).or_insert(BTreeSet::new()).insert((idx, aseg.0));
+            }
+            // swap active map 1 with active map 2, so map 2 is the new active map
+            std::mem::swap(&mut actseg1, &mut actseg2);
+            g
+        })
     // return garden map
-
-    Vec::new()
 }
 
 
@@ -47,6 +72,7 @@ struct Plot {
     plant: char,
     rows: BTreeSet<(usize, PlotSegment)>,
 }
+
 impl Plot {
     fn new(plant: char) -> Self {
         Plot {
