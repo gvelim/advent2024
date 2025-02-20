@@ -5,7 +5,7 @@ use advent2024::id_generator;
 use segment::{extract_ranges, PlotSegment};
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day12/sample2.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
 
     let garden = parse_garden(&input);
 
@@ -14,10 +14,13 @@ fn main() {
         .for_each(|(id,v)| println!("{id}::{:?} = {}", v, area(v)));
 }
 
+type Plot = BTreeSet<(usize, PlotSegment)>;
+type Garden = HashMap<usize, Plot>;
+
 // garden is a collection of plots expressed by a 1 or more overlapping vertical segments
 // parser extracts and composes plots per scanline
 // a plot is composed out of multiple scanlines
-fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
+fn parse_garden(input: &str) -> Garden {
     // set active map structures 1 & 2; holding (K,V) as (active segment, ID)
     let mut actseg1: Vec<(PlotSegment, usize, bool)> = Vec::new();
     let mut actseg2: Vec<(PlotSegment, usize, bool)> = Vec::new();
@@ -32,7 +35,7 @@ fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
         .map(extract_ranges)
         .enumerate()
         // for each line of plant segments(plant type, range)
-        .fold(HashMap::<usize,BTreeSet<(usize,PlotSegment)>>::new(), |mut garden, (l, segments)| {
+        .fold(Garden::new(), |mut garden, (l, segments)| {
             line = l;
 
             // for each plant segment
@@ -73,12 +76,12 @@ fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
                     garden.entry(plot_id).or_default().insert((line, seg));
 
                     // remove plot ID from garden map and hold onto its segments
-                    let plot_segments = garden.remove(&plot_id).unwrap();
+                    let plot = garden.remove(&plot_id).unwrap();
 
                     // merge removed segments into the plot with master ID
                     garden.entry(master_id)
                         .or_default()
-                        .extend( plot_segments);
+                        .extend( plot);
                 }
             }
 
@@ -103,7 +106,7 @@ fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
     garden
 }
 
-fn area(rows: &BTreeSet<(usize,PlotSegment)>) -> usize {
+fn area(rows: &Plot) -> usize {
     rows.iter().map(|seg| seg.1.len()).sum::<usize>()
 }
 
