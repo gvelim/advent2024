@@ -31,7 +31,8 @@ fn parse_garden(input: &str) -> Garden {
     // line counter
     let mut line = 0;
 
-    let mut garden = input.lines()
+    let mut garden = input
+        .lines()
         .map(extract_ranges)
         .enumerate()
         // for each line of plant segments(plant type, range)
@@ -62,7 +63,7 @@ fn parse_garden(input: &str) -> Garden {
                 }
 
                 // set master ID for matching plot IDs to merge into
-                let master_id = actseg1[ matched[0] ].1;
+                let (_, master_id, _) = actseg1[ matched[0] ];
 
                 // push new segment to active segments map 2 using first entry as the master ID
                 actseg2.push((segment, master_id, false));
