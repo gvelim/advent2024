@@ -62,9 +62,10 @@ fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
                     actseg2.push((segment, id, false));
                     // pop active segment(s) and push into garden map using same ID and current line number
                     while let Some(index) = matched.pop() {
+                        let (seg, s_id, _) = actseg1[index].clone();
                         garden.entry(id)
                             .or_default()
-                            .insert((line, actseg1[index].0.clone()));
+                            .insert((line, seg));
                     }
                 }
             }
