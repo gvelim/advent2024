@@ -5,7 +5,7 @@ use advent2024::id_generator;
 use segment::{extract_ranges, PlotSegment};
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day12/sample2.txt").unwrap();
 
     let garden = parse_garden(&input);
 
@@ -70,8 +70,8 @@ fn parse_garden(input: &str) -> HashMap<usize, BTreeSet<(usize,PlotSegment)>> {
             }
 
             // Empty map 1 and move any unmatched active segments to the garden map using same ID and current line number
-            while let Some((seg, id, m)) = actseg1.pop() {
-                if !m {
+            while let Some((seg, id, matched)) = actseg1.pop() {
+                if !matched {
                     garden.entry(id).or_default().insert((line, seg));
                 }
             }
