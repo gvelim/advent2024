@@ -78,20 +78,19 @@ fn parse_garden(input: &str) -> Garden {
                     // push active segment into garden map under its original plot ID and using current line number
                     garden.entry(plot_id).or_default().insert((line, seg));
 
-                    // if plot_id is equal to master_id, there is nothing to consolidate
-                    if plot_id == master_id { continue }
-
-                    // remove plot ID from garden map and hold onto its segments
-                    let plot = garden.remove(&plot_id).unwrap();
-
-                    // merge removed segments into the plot with master ID
-                    garden.entry(master_id)
-                        .or_default()
-                        .extend( plot);
+                    // if plot_id is NOT equal to master_id, then consolidate plots
+                    if plot_id != master_id {
+                        // remove plot ID from garden map and hold onto its segments
+                        let plot = garden.remove(&plot_id).unwrap();
+                        // merge removed segments into the plot with master ID
+                        garden.entry(master_id)
+                            .or_default()
+                            .extend(plot);
+                    }
                 }
             }
 
-            // Empty map 1 and move any unmatched active segments to the garden map with matching plot ID and current line number
+            // Empty map 1 while moving any unmatched active segments to the garden map using their plot ID and current line number
             while let Some((seg, id, matched)) = cur_aseg.pop() {
                 if !matched {
                     garden.entry(id).or_default().insert((line, seg));
@@ -103,7 +102,7 @@ fn parse_garden(input: &str) -> Garden {
             garden
         });
 
-    // Move any leftover active segments to the garden map
+    // Move to the garden map all active segments produced by the last iteration
     while let Some((seg, id, _)) = cur_aseg.pop() {
         garden.entry(id).or_default().insert((line+1, seg));
     }
@@ -114,6 +113,10 @@ fn parse_garden(input: &str) -> Garden {
 
 fn area(rows: &Plot) -> usize {
     rows.iter().map(|seg| seg.1.len()).sum::<usize>()
+}
+
+fn perimeter(rows: &Plot) -> usize {
+    todo!()
 }
 
 #[cfg(test)]
