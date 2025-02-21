@@ -35,3 +35,4 @@ Project Root
 * [Day 9: Disk Fragmenter](src/bin/day9/README.md)
 * [Day 10: Hoof It](src/bin/day10/README.md)
 * [Day 11: Plutonian Pebbles](src/bin/day11/README.md)
+* [Day 12: Garden Groups](src/bin/day12/README.md)
