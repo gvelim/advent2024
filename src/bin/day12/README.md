@@ -1,42 +1,86 @@
-# Day 12 Challenge - README
+# Garden Parsing Algorithm Documentation
 
-## Overview
+The `parse_garden` function is responsible for parsing a garden map into a collection of regions, where each region is a contiguous group of garden plots growing the same type of plant. The function uses a combination of vertical scanning and region merging to efficiently identify and group these regions. Below is a step-by-step explanation of the algorithm, along with the relevant code snippets.
 
-The `parse_garden` function processes a garden map (puzzle input) to group plant segments into plot regions using a scan-line algorithm. The algorithm tracks vertical adjacency between plant segments, id merges regions across lines.
+## Step-by-Step Explanation
 
-## Problem Statement
+### 1. **Initialization**
 
-### Step 1: Scan-Line Processing with Active Segments
+The function starts by initializing several data structures:
 
-The parser iterates over each line of the input, extracting horizontal plant segments of garden plots. For each segment, it checks for overlaps with active plot segments from the previous line (stored in `cur_aseg`).
+- **`cur_aseg` and `next_aseg`**: These are vectors that store active segments for the current and next scanlines, respectively. Each active segment is represented as a tuple `(PlotSegment, usize, bool)`, where:
+  - `PlotSegment` represents a segment of a garden plot.
+  - `usize` is the ID of the region to which the segment belongs.
+  - `bool` indicates whether the segment has been matched with another segment in the current scanline.
+
+- **`get_plot_id`**: This is a closure that generates unique IDs for new regions.
+
+- **`line`**: This variable keeps track of the current line number being processed.
 
 ```rust
 let mut cur_aseg: Vec<(PlotSegment, usize, bool)> = Vec::new();
 let mut next_aseg: Vec<(PlotSegment, usize, bool)> = Vec::new();
-// ...
-for segment in segments {
-    // Check overlaps with active segments
-    let mut matched = cur_aseg.iter_mut().enumerate().filter_map(|(i, (aseg, _, m))| {
+let mut get_plot_id = id_generator(0);
+let mut line = 0;
+```
+
+### 2. **Processing Each Line**
+
+The garden map is processed line by line. For each line, the function extracts the segments of garden plots using the `extract_ranges` function. These segments are then processed to identify and merge regions.
+
+```rust
+let mut garden = input
+    .lines()
+    .map(extract_ranges)
+    .enumerate()
+    .fold(Garden::new(), |mut garden, (l, segments)| {
+        line = l;
+        // Process each segment in the current line
+        for segment in segments {
+            // Step 3: Matching and Merging Segments
+        }
+        // Step 4: Handling Unmatched Segments
+        // Step 5: Swapping Active Segment Maps
+        garden
+    });
+```
+
+### 3. **Matching and Merging Segments**
+
+For each segment in the current line, the function checks if it overlaps with any active segments from the previous line (`cur_aseg`). If an overlap is found, the segment is merged into the corresponding region.
+
+- **Matching Segments**: The function iterates over `cur_aseg` to find segments that overlap with the current segment and have the same plant type. These segments are marked as matched.
+
+```rust
+let mut matched = cur_aseg
+    .iter_mut()
+    .enumerate()
+    .filter_map(|(i, (aseg, _, m))| {
         if aseg.plant() == segment.plant() && aseg.is_overlapping(&segment) {
             *m = true;
             Some(i)
-        } else { None }
-    }).collect::<Vec<_>>();
-    // ...
-}
+        } else {
+            None
+        }
+    })
+    .collect::<Vec<_>>();
 ```
 
-### Step 2: Plot Region Merging and ID Assignment
-
-When overlapping segments are found, they are merged under a "master" plot region ID. New segments without overlaps start new plot regions.
+- **Creating New Regions**: If no matching segments are found, a new region is created with a unique ID.
 
 ```rust
 if matched.is_empty() {
     next_aseg.push((segment, get_plot_id(), false));
     continue;
 }
+```
+
+- **Merging Regions**: If matching segments are found, the current segment is added to the region with the smallest ID (referred to as the `master_id`). Any other matching regions are merged into this master region.
+
+```rust
 let (_, master_id, _) = cur_aseg[matched[0]];
-// Merge segments into master region
+next_aseg.push((segment, master_id, false));
+
 while let Some(index) = matched.pop() {
     let (seg, plot_id, _) = cur_aseg[index].clone();
     garden.entry(plot_id).or_default().insert((line, seg));
@@ -47,12 +91,11 @@ while let Some(index) = matched.pop() {
 }
 ```
 
-### Step 3: Finalizing Regions
+### 4. **Handling Unmatched Segments**
 
-Unmatched active plot segments are moved to the garden after processing each line.
+After processing all segments in the current line, any active segments that were not matched are moved to the garden map under their respective region IDs.
 
 ```rust
-// After processing line segments
 while let Some((seg, id, matched)) = cur_aseg.pop() {
     if !matched {
         garden.entry(id).or_default().insert((line, seg));
@@ -60,15 +103,34 @@ while let Some((seg, id, matched)) = cur_aseg.pop() {
 }
 ```
 
-### Step 4: Tidy up post line processing
+### 5. **Swapping Active Segment Maps**
 
-Add active plot segments remaining after all lines have been processed.
+The `cur_aseg` and `next_aseg` maps are swapped, so that `next_aseg` becomes the new `cur_aseg` for the next line.
 
 ```rust
-// At end of input
+std::mem::swap(&mut cur_aseg, &mut next_aseg);
+```
+
+### 6. **Finalizing the Garden Map**
+
+After processing all lines, any remaining active segments are moved to the garden map.
+
+```rust
 while let Some((seg, id, _)) = cur_aseg.pop() {
-    garden.entry(id).or_default().insert((line+1, seg));
+    garden.entry(id).or_default().insert((line + 1, seg));
 }
 ```
 
-This approach efficiently groups adjacent garden plots into regions while handling vertical and horizontal adjacencies.
+### 7. **Returning the Garden Map**
+
+Finally, the function returns the garden map, which contains all the regions identified in the garden.
+
+```rust
+garden
+```
+
+## Summary
+
+The `parse_garden` function processes the garden map line by line, identifying and merging regions of contiguous garden plots. It uses a combination of vertical scanning and region merging to efficiently group segments into regions. The function maintains two active segment maps (`cur_aseg` and `next_aseg`) to track segments across lines and merges regions as needed. The final garden map contains all the regions, each represented by a unique ID and a set of segments.
+
+This algorithm is efficient and ensures that all regions are correctly identified and merged, even in complex garden maps with nested or overlapping regions.

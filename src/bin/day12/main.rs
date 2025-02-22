@@ -5,7 +5,7 @@ use advent2024::id_generator;
 use segment::{extract_ranges, PlotSegment};
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day12/sample2.txt").unwrap();
 
     let garden = parse_garden(&input);
 
