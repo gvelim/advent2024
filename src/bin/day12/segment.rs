@@ -5,20 +5,29 @@ use std::{ops::Range,fmt::Debug};
 pub(super) struct PlotSegment(char, Range<u8>);
 
 impl PlotSegment {
-    pub fn plant(&self) -> char {
+    pub(super) fn new(plant: char, range: Range<u8>) -> Self {
+        PlotSegment(plant, range)
+    }
+    pub(super) fn plant(&self) -> char {
         self.0
     }
-    pub fn start(&self) -> u8 {
+    pub(super) fn start(&self) -> u8 {
         self.1.start
     }
-    pub fn end(&self) -> u8 {
+    pub(super) fn end(&self) -> u8 {
         self.1.end
     }
-    pub fn len(&self) -> usize {
+    pub(super) fn len(&self) -> usize {
         self.1.end as usize - self.1.start as usize
     }
     pub(super) fn is_overlapping(&self, other: &Self) -> bool {
         self.start() < other.end() && self.end() > other.start()
+    }
+    pub(super) fn get_overlap(&self, other: &Self) -> u8 {
+        // find the absolute overlap between the two segments
+        let start = self.start().max(other.start());
+        let end = self.end().min(other.end());
+        end - start
     }
 }
 

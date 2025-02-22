@@ -1,6 +1,6 @@
 mod segment;
 
-use std::collections::{BTreeSet, HashMap};
+use std::{collections::{BTreeSet, HashMap}, ptr::swap, thread::current};
 use advent2024::id_generator;
 use segment::{extract_ranges, PlotSegment};
 
@@ -12,6 +12,10 @@ fn main() {
     garden
         .iter()
         .for_each(|(id,v)| println!("{id}::{:?} = {}", v, area(v)));
+
+    println!("Perimeter: {}",
+        perimeter(&garden[&1])
+    );
 }
 
 type Plot = BTreeSet<(usize, PlotSegment)>;
@@ -116,7 +120,36 @@ fn area(rows: &Plot) -> usize {
 }
 
 fn perimeter(rows: &Plot) -> usize {
-    todo!()
+    let (y_start, seg) = rows.first().unwrap().clone();
+    let y_end = rows.last().unwrap().0;
+    let mut curr_aseg: Vec<PlotSegment> = Vec::new();
+    let mut next_aseg: Vec<PlotSegment> = Vec::new();
+
+    // for each segment at y
+    (y_start..=y_end).map(|y| {
+        let rng_start = PlotSegment::new(seg.plant(), 0..1);
+        let rng_end = PlotSegment::new(seg.plant(), u8::MAX-1..u8::MAX);
+        println!("Line : {y}");
+        let sum = rows
+            .range((y,rng_start)..=(y,rng_end))
+            .inspect(|s| println!("\t{:?}",s))
+            .map(|(_, seg)| {
+                let perimeter = seg.len() - curr_aseg
+                    .iter()
+                    .filter(|aseg| aseg.is_overlapping(seg))
+                    .map(|aseg| aseg.get_overlap(seg) as usize)
+                    .sum::<usize>();
+                next_aseg.push(seg.clone());
+                perimeter
+            })
+            .inspect(|s| println!("\tMatch sum: {:?}",s))
+            .sum::<usize>();
+        println!("Line sum: {:?}",sum);
+        curr_aseg.drain(..);
+        std::mem::swap(&mut next_aseg, &mut curr_aseg);
+        sum
+    })
+    .sum::<usize>()
 }
 
 #[cfg(test)]
