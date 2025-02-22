@@ -1,29 +1,31 @@
 use std::{ops::Range,fmt::Debug};
 
+pub type Seed = u16;
+
 // single line description of a plot, capturing a range's line position
 #[derive(Default, Eq, PartialEq, Clone)]
-pub(super) struct PlotSegment(char, Range<u8>);
+pub(super) struct PlotSegment(char, Range<Seed>);
 
 impl PlotSegment {
-    pub(super) fn new(plant: char, range: Range<u8>) -> Self {
+    pub(super) fn new(plant: char, range: Range<Seed>) -> Self {
         PlotSegment(plant, range)
     }
     pub(super) fn plant(&self) -> char {
         self.0
     }
-    pub(super) fn start(&self) -> u8 {
+    pub(super) fn start(&self) -> Seed {
         self.1.start
     }
-    pub(super) fn end(&self) -> u8 {
+    pub(super) fn end(&self) -> Seed {
         self.1.end
     }
-    pub(super) fn len(&self) -> usize {
-        self.1.end as usize - self.1.start as usize
+    pub(super) fn len(&self) -> Seed {
+        self.1.end as Seed - self.1.start as Seed
     }
     pub(super) fn is_overlapping(&self, other: &Self) -> bool {
         self.start() < other.end() && self.end() > other.start()
     }
-    pub(super) fn get_overlap(&self, other: &Self) -> u8 {
+    pub(super) fn get_overlap(&self, other: &Self) -> Seed {
         // find the absolute overlap between the two segments
         let start = self.start().max(other.start());
         let end = self.end().min(other.end());
@@ -62,7 +64,7 @@ pub(super) fn extract_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
         .chunk_by(|a, b| a == b)
         .map(move |chunk| {
             let start = idx;
-            idx += chunk.len() as u8;
+            idx += chunk.len() as Seed;
             PlotSegment(chunk[0] as char, start..idx)
         })
 }
@@ -92,10 +94,10 @@ mod tests {
     fn test_scan_line() {
         let line = "RRRRIICCFF";
         let mut iter = extract_ranges(line);
-        assert_eq!(iter.next(), Some(PlotSegment('R', 0u8..4)));
-        assert_eq!(iter.next(), Some(PlotSegment('I', 4u8..6)));
-        assert_eq!(iter.next(), Some(PlotSegment('C', 6u8..8)));
-        assert_eq!(iter.next(), Some(PlotSegment('F', 8u8..10)));
+        assert_eq!(iter.next(), Some(PlotSegment('R', 0..4)));
+        assert_eq!(iter.next(), Some(PlotSegment('I', 4..6)));
+        assert_eq!(iter.next(), Some(PlotSegment('C', 6..8)));
+        assert_eq!(iter.next(), Some(PlotSegment('F', 8..10)));
         assert_eq!(iter.next(), None);
     }
 }

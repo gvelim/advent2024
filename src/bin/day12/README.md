@@ -1,4 +1,4 @@
-# Garden Parsing Algorithm Documentation
+# Garden Parsing Algorithm
 
 The `parse_garden` function is responsible for parsing a garden map into a collection of regions, where each region is a contiguous group of garden plots growing the same type of plant. The function uses a combination of vertical scanning and region merging to efficiently identify and group these regions. Below is a step-by-step explanation of the algorithm, along with the relevant code snippets.
 
@@ -125,12 +125,70 @@ while let Some((seg, id, _)) = cur_aseg.pop() {
 
 Finally, the function returns the garden map, which contains all the regions identified in the garden.
 
-```rust
-garden
-```
-
 ## Summary
 
 The `parse_garden` function processes the garden map line by line, identifying and merging regions of contiguous garden plots. It uses a combination of vertical scanning and region merging to efficiently group segments into regions. The function maintains two active segment maps (`cur_aseg` and `next_aseg`) to track segments across lines and merges regions as needed. The final garden map contains all the regions, each represented by a unique ID and a set of segments.
 
 This algorithm is efficient and ensures that all regions are correctly identified and merged, even in complex garden maps with nested or overlapping regions.
+
+---
+# Perimeter Calculation Algorithm
+The `perimeter()` function calculates the perimeter of a plant region (plot).  The garden is a collection of plots, each composed of vertical plant segments. The challenge is to efficiently compute the perimeter of these irregularly shaped plots.  The algorithm cleverly avoids explicitly tracing the boundary, instead using line-by-line processing and overlap detection.
+
+**Step-by-Step Breakdown of `perimeter()`:**
+
+1. **Initialization:**
+   The function starts by extracting key information from the input `Plot`:
+
+   ```rust
+   let (y_start, seg) = rows.first().unwrap().clone(); // Get starting y and a sample segment
+   let y_end = rows.last().unwrap().0;             // Get ending y-coordinate
+   let rng_start = PlotSegment::new(seg.plant(), 0..1); // Dummy segment for leftmost bound
+   let rng_end = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX); // Dummy segment for rightmost bound
+   ```
+   This sets up the y-coordinate range and creates dummy segments to simplify iteration across each line.
+
+2. **North and South Perimeter Calculation (`north_perimeter_len`):**
+   The core logic is within the nested `north_perimeter_len` function:
+
+   ```rust
+   let north_perimeter_len = |range: Box<dyn Iterator<Item = usize>>| -> usize {
+       let mut curr_aseg: Vec<PlotSegment> = Vec::new(); // Active segments from previous line
+       let mut next_aseg: Vec<PlotSegment> = Vec::new(); // Active segments from current line
+
+       range.map(|y| { // Iterate through y-coordinates (top-down or bottom-up)
+           let sum = rows.range((y, rng_start.clone())..=(y, rng_end.clone())) // Iterate through segments on current line
+               .map(|(_, seg)| { // For each segment on the line
+                   let overlapping_area = curr_aseg.iter() // Check for overlap with previous line's segments
+                       .filter(|aseg| aseg.is_overlapping(seg))
+                       .map(|aseg| aseg.get_overlap(seg) as usize)
+                       .sum::<usize>();
+                   next_aseg.push(seg.clone()); // Add current segment to next line's active segments
+                   seg.len() as usize - overlapping_area // Perimeter contribution (length - overlap)
+               })
+               .sum::<usize>();
+           curr_aseg.clear();
+           std::mem::swap(&mut next_aseg, &mut curr_aseg); // Update active segments
+           sum
+       })
+       .sum::<usize>()
+   };
+   ```
+   This function iterates line by line, calculating the perimeter contribution of each segment by subtracting its overlap with the previous line.  The `curr_aseg` and `next_aseg` vectors efficiently track active segments across lines.
+
+3. **East and West Perimeter Calculation:** This part is relatively straightforward:
+
+   ```rust
+   (y_start..=y_end).map(|y| rows.range((y, rng_start.clone())..=(y, rng_end.clone())).count() * 2).sum::<usize>()
+   ```
+   It counts the number of segments on each line and multiplies by 2 to account for both east and west sides.
+
+4. **Total Perimeter:**  The final perimeter is computed by summing the north, south, and east/west components:
+
+   ```rust
+   north_perimeter_len(Box::new(y_start..=y_end)) + // Top-down perimeter
+       north_perimeter_len(Box::new((y_start..=y_end).rev())) + // Bottom-up perimeter
+       // ... East and West perimeter calculation ...
+   ```
+
+**Core Idea:** The algorithm cleverly uses overlap detection to avoid explicit boundary tracing. By considering overlaps between consecutive lines, it accurately subtracts shared edges, resulting in the correct external perimeter. The top-down and bottom-up traversals ensure complete coverage of all edges.  The use of iterators and functional programming enhances efficiency and readability.

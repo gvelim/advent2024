@@ -2,7 +2,7 @@ mod segment;
 
 use std::collections::{BTreeSet, HashMap};
 use advent2024::id_generator;
-use segment::{extract_ranges, PlotSegment};
+use segment::{extract_ranges, PlotSegment, Seed};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
@@ -18,7 +18,7 @@ fn main() {
             (area(v), perimeter(v))
         )
         .map(|(a,b)| {
-            println!("area: {}, perimeter: {}, area*perimeter: {}", a, b, a * b);
+            println!("area: {} * perimeter: {} = {}", a, b, a * b);
             a * b
         })
         .sum::<usize>();
@@ -124,17 +124,17 @@ fn parse_garden(input: &str) -> Garden {
 }
 
 fn area(rows: &Plot) -> usize {
-    rows.iter().map(|seg| seg.1.len()).sum::<usize>()
+    rows.iter().map(|seg| seg.1.len() as usize).sum::<usize>()
 }
 
 fn perimeter(rows: &Plot) -> usize {
     let (y_start, seg) = rows.first().unwrap().clone();
     let y_end = rows.last().unwrap().0;
     let rng_start = PlotSegment::new(seg.plant(), 0..1);
-    let rng_end = PlotSegment::new(seg.plant(), u8::MAX-1..u8::MAX);
+    let rng_end = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
 
     // calculate the north perimeter of the plot
-    let scan_perimeter = | range: Box<dyn Iterator<Item = usize>>| -> usize  {
+    let north_perimeter_len = | range: Box<dyn Iterator<Item = usize>>| -> usize  {
         let mut curr_aseg: Vec<PlotSegment> = Vec::new();
         let mut next_aseg: Vec<PlotSegment> = Vec::new();
 
@@ -143,16 +143,16 @@ fn perimeter(rows: &Plot) -> usize {
                 // for each segment in line `y`
                 .range((y,rng_start.clone()) ..= (y,rng_end.clone()))
                 .map(|(_, seg)| {
-                    // calculate perimeter on segments north side
-                    // Segment length - Sum( segment overlap area vs current segment)
-                    let perimeter = seg.len() - curr_aseg
-                        .iter()
-                        .filter(|aseg| seg.end() > aseg.start() && aseg.is_overlapping(seg))
+                    // calculate perimeter on segment's north side
+                    // Sum( segment overlapping area with active segment(s) above)
+                    let overlapping_area = curr_aseg.iter()
+                        .filter(|aseg| aseg.is_overlapping(seg) )
                         .map(|aseg| aseg.get_overlap(seg) as usize)
                         .sum::<usize>();
                     // store segment for comparison against the next line; next iteration
                     next_aseg.push(seg.clone());
-                    perimeter
+                    // North perimeter = Segment Lenght - Overlapping area
+                    seg.len() as usize - overlapping_area
                 })
                 .sum::<usize>();
             // clean up current active segments vector
@@ -165,14 +165,14 @@ fn perimeter(rows: &Plot) -> usize {
     };
 
     // scan top->down; so we get the north perimeter count
-    scan_perimeter(Box::new(y_start..=y_end)) +
-        // scan bottom->up; reverse plot so we get the south perimeter count
-        scan_perimeter(Box::new((y_start..=y_end).rev())) +
-        // scan left->right; every segment has 2 perimeter bounds one east & one west
-        (y_start..=y_end)
-            .map(|y| {
-                rows.range((y,rng_start.clone())..=(y,rng_end.clone())).count() * 2
-            })
+    north_perimeter_len(Box::new(y_start..=y_end)) +
+        // to scan bottom->up; we scan top->bottom using the reverse line numbers
+        north_perimeter_len(Box::new((y_start..=y_end).rev())) +
+        // scan left->right; every segment is bounded byone east & one west, aka 2
+        (y_start ..= y_end)
+            .map(|y| rows
+                .range( (y,rng_start.clone()) ..= (y,rng_end.clone()) ).count() * 2
+            )
             .sum::<usize>()
 }
 
