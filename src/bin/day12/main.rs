@@ -1,21 +1,29 @@
 mod segment;
 
-use std::{collections::{BTreeSet, HashMap}, ptr::swap, thread::current};
+use std::collections::{BTreeSet, HashMap};
 use advent2024::id_generator;
 use segment::{extract_ranges, PlotSegment};
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day12/sample2.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day12/input.txt").unwrap();
 
     let garden = parse_garden(&input);
 
-    garden
+    let total = garden
         .iter()
-        .for_each(|(id,v)| println!("{id}::{:?} = {}", v, area(v)));
+        .inspect(|(id, plot)|
+            print!("{id}::{:?} = ", plot)
+        )
+        .map(|(_,v)|
+            (area(v), perimeter(v))
+        )
+        .map(|(a,b)| {
+            println!("area: {}, perimeter: {}, area*perimeter: {}", a, b, a * b);
+            a * b
+        })
+        .sum::<usize>();
 
-    println!("Perimeter: {}",
-        perimeter(&garden[&1])
-    );
+    println!("Garden total cost : {total}");
 }
 
 type Plot = BTreeSet<(usize, PlotSegment)>;
@@ -122,34 +130,47 @@ fn area(rows: &Plot) -> usize {
 fn perimeter(rows: &Plot) -> usize {
     let (y_start, seg) = rows.first().unwrap().clone();
     let y_end = rows.last().unwrap().0;
-    let mut curr_aseg: Vec<PlotSegment> = Vec::new();
-    let mut next_aseg: Vec<PlotSegment> = Vec::new();
+    let rng_start = PlotSegment::new(seg.plant(), 0..1);
+    let rng_end = PlotSegment::new(seg.plant(), u8::MAX-1..u8::MAX);
 
-    // for each segment at y
-    (y_start..=y_end).map(|y| {
-        let rng_start = PlotSegment::new(seg.plant(), 0..1);
-        let rng_end = PlotSegment::new(seg.plant(), u8::MAX-1..u8::MAX);
-        println!("Line : {y}");
-        let sum = rows
-            .range((y,rng_start)..=(y,rng_end))
-            .inspect(|s| println!("\t{:?}",s))
-            .map(|(_, seg)| {
-                let perimeter = seg.len() - curr_aseg
-                    .iter()
-                    .filter(|aseg| aseg.is_overlapping(seg))
-                    .map(|aseg| aseg.get_overlap(seg) as usize)
-                    .sum::<usize>();
-                next_aseg.push(seg.clone());
-                perimeter
+    let scan_perimeter = | range: Box<dyn Iterator<Item = usize>>| -> usize  {
+        let mut curr_aseg: Vec<PlotSegment> = Vec::new();
+        let mut next_aseg: Vec<PlotSegment> = Vec::new();
+
+        range.map(|y| {
+            // println!("Line : {y}");
+            let sum = rows
+                .range((y,rng_start.clone())..=(y,rng_end.clone()))
+                // .inspect(|s| println!("\t{:?}",s))
+                .map(|(_, seg)| {
+                    let perimeter = seg.len() - curr_aseg
+                        .iter()
+                        .filter(|aseg| seg.end() > aseg.start() && aseg.is_overlapping(seg))
+                        .map(|aseg| aseg.get_overlap(seg) as usize)
+                        .sum::<usize>();
+                    next_aseg.push(seg.clone());
+                    perimeter
+                })
+                // .inspect(|s| println!("\tMatch sum: {:?}",s))
+                .sum::<usize>();
+            // println!("Line sum: {:?}",sum);
+            curr_aseg.drain(..);
+            std::mem::swap(&mut next_aseg, &mut curr_aseg);
+            sum
+        })
+        .sum::<usize>()
+    };
+
+    // scan top->down
+    scan_perimeter(Box::new(y_start..=y_end)) +
+        // scan bottom->up
+        scan_perimeter(Box::new((y_start..=y_end).rev())) +
+        // scan left->right
+        (y_start..=y_end)
+            .map(|y| {
+                rows.range((y,rng_start.clone())..=(y,rng_end.clone())).count() * 2
             })
-            .inspect(|s| println!("\tMatch sum: {:?}",s))
-            .sum::<usize>();
-        println!("Line sum: {:?}",sum);
-        curr_aseg.drain(..);
-        std::mem::swap(&mut next_aseg, &mut curr_aseg);
-        sum
-    })
-    .sum::<usize>()
+            .sum::<usize>()
 }
 
 #[cfg(test)]
@@ -163,27 +184,37 @@ mod tests {
 
         // A region of R plants with price 12 * 18 = 216.
         assert_eq!(area(&garden[&1]), 12, "expected 12 got {:?}",garden[&1]);
+        assert_eq!(perimeter(&garden[&1]), 18, "expected 18 got {:?}",garden[&1]);
         // A region of I plants with price 4 * 8 = 32.
         assert_eq!(area(&garden[&2]), 4, "expected 4 got {:?}",garden[&2]);
+        assert_eq!(perimeter(&garden[&2]), 8, "expected 8 got {:?}",garden[&2]);
         // A region of C plants with price 14 * 28 = 392.
         assert_eq!(area(&garden[&3]), 14, "expected 14 got {:?}",garden[&3]);
+        assert_eq!(perimeter(&garden[&3]), 28, "expected 28 got {:?}",garden[&3]);
         // A region of F plants with price 10 * 18 = 180.
         assert_eq!(area(&garden[&4]), 10, "expected 10 got {:?}",garden[&4]);
+        assert_eq!(perimeter(&garden[&4]), 18, "expected 18 got {:?}",garden[&4]);
         // A region of V plants with price 13 * 20 = 260.
         assert_eq!(area(&garden[&5]), 13, "expected 13 got {:?}",garden[&5]);
+        assert_eq!(perimeter(&garden[&5]), 20, "expected 20 got {:?}",garden[&5]);
         // A region of J plants with price 11 * 20 = 220.
         assert_eq!(area(&garden[&6]), 11, "expected 11 got {:?}",garden[&6]);
+        assert_eq!(perimeter(&garden[&6]), 20, "expected 20 got {:?}",garden[&6]);
         // A region of C plants with price 1 * 4 = 4.
         assert_eq!(area(&garden[&7]), 1, "expected 1 got {:?}",garden[&7]);
+        assert_eq!(perimeter(&garden[&7]), 4, "expected 4 got {:?}",garden[&7]);
         // A region of E plants with price 13 * 18 = 234.
         assert_eq!(area(&garden[&8]), 13, "expected 13 got {:?}",garden[&8]);
+        assert_eq!(perimeter(&garden[&8]), 18, "expected 18 got {:?}",garden[&8]);
         // A region of I plants with price 14 * 22 = 308.
         assert_eq!(area(&garden[&9]), 14, "expected 14 got {:?}",garden[&9]);
+        assert_eq!(perimeter(&garden[&9]), 22, "expected 22 got {:?}",garden[&9]);
         // A region of M plants with price 5 * 12 = 60.
         assert_eq!(area(&garden[&10]), 5, "expected 5 got {:?}",garden[&10]);
+        assert_eq!(perimeter(&garden[&10]), 12, "expected 12 got {:?}",garden[&10]);
         // A region of S plants with price 3 * 8 = 24.
         assert_eq!(area(&garden[&11]), 3, "expected 3 got {:?}",garden[&11]);
-
+        assert_eq!(perimeter(&garden[&11]), 8, "expected 8 got {:?}",garden[&11]);
     }
 
 }
