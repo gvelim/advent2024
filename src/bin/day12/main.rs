@@ -5,7 +5,7 @@ use advent2024::id_generator;
 use segment::{extract_ranges, PlotSegment, Seed};
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day12/sample3.txt").unwrap();
 
     let garden = parse_garden(&input);
 
@@ -33,41 +33,38 @@ type Garden = HashMap<usize, Plot>;
 // parser extracts and composes plots per scanline
 // a plot is composed out of multiple scanlines
 fn parse_garden(input: &str) -> Garden {
-    // set active map structures current & next; holding (K,V) as (active segment, ID, matched)
-    let mut cur_aseg: Vec<(PlotSegment, usize, bool)> = Vec::new();
-    let mut next_aseg: Vec<(PlotSegment, usize, bool)> = Vec::new();
-
     // id generator fn()
     let mut get_plot_id = id_generator(0);
 
     // line counter
     let mut line = 0;
 
-    let mut garden = input
+    let (mut garden, mut cur_aseg) = input
         .lines()
         // extract segments
         .map(extract_ranges)
         // capture the line number
         .enumerate()
         // for each line worth of plant segments(plant type, range)
-        .fold(Garden::new(), |mut garden, (l, segments)| {
+        .fold(
+            (Garden::new(), Vec::<(PlotSegment, usize, bool)>::new()),
+            |(mut garden, mut curr_aseg), (l, segments)| {
+
+            // set active map structures next; holding (K,V) as (active segment, ID, matched)
+            let mut next_aseg: Vec<(PlotSegment, usize, bool)> = Vec::new();
             line = l;
 
             // for each plant segment
             for segment in segments {
-
-                // find within current map 1, all active segments indeces that (a) overlap with && (b) have same plant type and flag those as matched
-                let mut matched = cur_aseg
+                // find within current map 1, all active segments indeces that
+                // (a) overlap with && (b) have same plant type and flag those as matched
+                let mut matched = curr_aseg
                     .iter_mut()
                     .enumerate()
-                    .filter_map(|(i, (aseg, _, m))| {
-                        if aseg.plant() == segment.plant() && aseg.is_overlapping(&segment) {
-                            *m = true;
-                            Some(i)
-                        } else {
-                            None
-                        }
-                    })
+                    .filter_map(|(i, (aseg, _, m))|
+                        if aseg.plant() == segment.plant() &&
+                            aseg.is_overlapping(&segment) { *m = true; Some(i) } else { None }
+                    )
                     .collect::<Vec<_>>();
 
                 // if empty, then push a new (K,V) (segment, plot ID) into next active segments map 2 and process next segment
@@ -77,7 +74,7 @@ fn parse_garden(input: &str) -> Garden {
                 }
 
                 // set the master ID for consolidating all matching plot IDs
-                let (_, master_id, _) = cur_aseg[ matched[0] ];
+                let (_, master_id, _) = curr_aseg[ matched[0] ];
 
                 // push new segment to next active segments map 2 under the master ID
                 next_aseg.push((segment, master_id, false));
@@ -85,7 +82,7 @@ fn parse_garden(input: &str) -> Garden {
                 // get index of each matching plot
                 while let Some(index) = matched.pop() {
                     // clone plot and plot_id; don't remove it as queued up segments may also match it
-                    let (seg, plot_id, _) = cur_aseg[index].clone();
+                    let (seg, plot_id, _) = curr_aseg[index].clone();
 
                     // push active segment into garden map under its original plot ID and using current line number
                     garden.entry(plot_id).or_default().insert((line, seg));
@@ -103,15 +100,13 @@ fn parse_garden(input: &str) -> Garden {
             }
 
             // Empty map 1 while moving any unmatched active segments to the garden map using their plot ID and current line number
-            while let Some((seg, id, matched)) = cur_aseg.pop() {
+            while let Some((seg, id, matched)) = curr_aseg.pop() {
                 if !matched {
                     garden.entry(id).or_default().insert((line, seg));
                 }
             }
 
-            // swap next active map 1 with active map 2, so next map 2 becomes the current active map
-            std::mem::swap(&mut cur_aseg, &mut next_aseg);
-            garden
+            (garden, next_aseg)
         });
 
     // Move to the garden map all active segments produced by the last iteration
