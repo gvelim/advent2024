@@ -55,7 +55,7 @@ fn parse_garden(input: &str) -> Garden {
             line = l;
 
             // for each plant segment
-            for segment in segments {
+            for segment in segments.into_iter() {
                 // find within current map 1, all active segments indeces that
                 // (a) overlap with && (b) have same plant type and flag those as matched
                 let mut matched = curr_aseg
@@ -75,18 +75,14 @@ fn parse_garden(input: &str) -> Garden {
 
                 // set the master ID for consolidating all matching plot IDs
                 let (_, master_id, _) = curr_aseg[ matched[0] ];
-
                 // push new segment to next active segments map 2 under the master ID
                 next_aseg.push((segment, master_id, false));
-
                 // get index of each matching plot
                 while let Some(index) = matched.pop() {
                     // clone plot and plot_id; don't remove it as queued up segments may also match it
                     let (seg, plot_id, _) = curr_aseg[index].clone();
-
                     // push active segment into garden map under its original plot ID and using current line number
                     garden.entry(plot_id).or_default().insert((line, seg));
-
                     // if plot_id is NOT equal to master_id, then consolidate plots
                     if plot_id != master_id {
                         // remove plot ID from garden map and hold onto its segments
@@ -99,7 +95,7 @@ fn parse_garden(input: &str) -> Garden {
                 }
             }
 
-            // Empty map 1 while moving any unmatched active segments to the garden map using their plot ID and current line number
+            // Empty vector with unmatched segments by moving to the garden map under their plot ID and current line number
             curr_aseg
                 .into_iter()
                 .filter(|(_,_,mathced)| !mathced)
@@ -110,7 +106,7 @@ fn parse_garden(input: &str) -> Garden {
             (garden, next_aseg)
         });
 
-    // Move to the garden map all active segments produced by the last iteration
+    // move remaining segments to the garden map under their respective plot ID
     cur_aseg
         .into_iter()
         .for_each(|(seg, id, _)| {
