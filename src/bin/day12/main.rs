@@ -128,40 +128,32 @@ fn area(rows: &Plot) -> usize {
 }
 
 fn perimeter(rows: &Plot) -> usize {
-    let (y_start, seg) = rows.first().unwrap().clone();
+    let &(y_start, ref seg) = rows.first().unwrap();
     let y_end = rows.last().unwrap().0;
     let rng_start = PlotSegment::new(seg.plant(), 0..1);
     let rng_end = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
 
     // calculate the north perimeter of the plot
     let north_perimeter_len = | range: Box<dyn Iterator<Item = usize>>| -> usize  {
-        let mut curr_aseg: Vec<PlotSegment> = Vec::new();
-        let mut next_aseg: Vec<PlotSegment> = Vec::new();
-
-        range.map(|y| {
-            let sum = rows
+        range.fold((0, Vec::<PlotSegment>::new()), |(plot_total, northern_segs), y| {
+            let (line_sum, line_segs) = rows
                 // for each segment in line `y`
                 .range((y,rng_start.clone()) ..= (y,rng_end.clone()))
-                .map(|(_, seg)| {
+                .fold( (0, Vec::<PlotSegment>::new()), |(line_sum, mut curr_segs), (_, seg)| {
                     // calculate perimeter on segment's north side
-                    // Sum( segment overlapping area with active segment(s) above)
-                    let overlapping_area = curr_aseg.iter()
-                        .filter(|aseg| aseg.is_overlapping(seg) )
-                        .map(|aseg| aseg.get_overlap(seg) as usize)
+                    // Sum( segment overlapping area against segment(s) above)
+                    let overlapping_area = northern_segs
+                        .iter()
+                        .filter(|nseg| nseg.is_overlapping(seg) )
+                        .map(|nseg| nseg.get_overlap(seg) as usize)
                         .sum::<usize>();
-                    // store segment for comparison against the next line; next iteration
-                    next_aseg.push(seg.clone());
-                    // North perimeter = Segment Lenght - Overlapping area
-                    seg.len() as usize - overlapping_area
-                })
-                .sum::<usize>();
-            // clean up current active segments vector
-            curr_aseg.clear();
-            // make next the current active segments vector
-            std::mem::swap(&mut next_aseg, &mut curr_aseg);
-            sum
-        })
-        .sum::<usize>()
+                    // store segment for comparison when we process the line below; next iteration
+                    curr_segs.push(seg.clone());
+                    // Segment's north perimeter = Segment Lenght - Overlapping area
+                    (line_sum + seg.len() as usize - overlapping_area, curr_segs)
+                });
+            (plot_total + line_sum, line_segs)
+        }).0
     };
 
     // scan top->down; so we get the north perimeter count
