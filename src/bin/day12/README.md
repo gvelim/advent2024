@@ -132,63 +132,190 @@ The `parse_garden` function processes the garden map line by line, identifying a
 This algorithm is efficient and ensures that all regions are correctly identified and merged, even in complex garden maps with nested or overlapping regions.
 
 ---
-# Perimeter Calculation Algorithm
-The `perimeter()` function calculates the perimeter of a plant region (plot).  The garden is a collection of plots, each composed of vertical plant segments. The challenge is to efficiently compute the perimeter of these irregularly shaped plots.  The algorithm cleverly avoids explicitly tracing the boundary, instead using line-by-line processing and overlap detection.
 
-**Step-by-Step Breakdown of `perimeter()`:**
+# Understanding the `perimeter` Function: A Step-by-Step Guide
 
-1. **Initialization:**
-   The function starts by extracting key information from the input `Plot`:
+This document explains how the `perimeter` function in the provided Rust code calculates the perimeter of a garden plot.  A plot is represented as a collection of vertical segments.
 
-   ```rust
-   let (y_start, seg) = rows.first().unwrap().clone(); // Get starting y and a sample segment
-   let y_end = rows.last().unwrap().0;             // Get ending y-coordinate
-   let rng_start = PlotSegment::new(seg.plant(), 0..1); // Dummy segment for leftmost bound
-   let rng_end = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX); // Dummy segment for rightmost bound
-   ```
-   This sets up the y-coordinate range and creates dummy segments to simplify iteration across each line.
+## 1. The Big Picture: How We Approach Perimeter
 
-2. **North and South Perimeter Calculation (`north_perimeter_len`):**
-   The core logic is within the nested `north_perimeter_len` function:
+Imagine a garden plot made up of little squares.  To find the perimeter, we need to count all the *exposed* edges of these squares.  An edge is exposed if it's not touching another square.
 
-   ```rust
-   let north_perimeter_len = |range: Box<dyn Iterator<Item = usize>>| -> usize {
-       let mut curr_aseg: Vec<PlotSegment> = Vec::new(); // Active segments from previous line
-       let mut next_aseg: Vec<PlotSegment> = Vec::new(); // Active segments from current line
+The code breaks this problem down into manageable parts:
 
-       range.map(|y| { // Iterate through y-coordinates (top-down or bottom-up)
-           let sum = rows.range((y, rng_start.clone())..=(y, rng_end.clone())) // Iterate through segments on current line
-               .map(|(_, seg)| { // For each segment on the line
-                   let overlapping_area = curr_aseg.iter() // Check for overlap with previous line's segments
-                       .filter(|aseg| aseg.is_overlapping(seg))
-                       .map(|aseg| aseg.get_overlap(seg) as usize)
-                       .sum::<usize>();
-                   next_aseg.push(seg.clone()); // Add current segment to next line's active segments
-                   seg.len() as usize - overlapping_area // Perimeter contribution (length - overlap)
-               })
-               .sum::<usize>();
-           curr_aseg.clear();
-           std::mem::swap(&mut next_aseg, &mut curr_aseg); // Update active segments
-           sum
-       })
-       .sum::<usize>()
-   };
-   ```
-   This function iterates line by line, calculating the perimeter contribution of each segment by subtracting its overlap with the previous line.  The `curr_aseg` and `next_aseg` vectors efficiently track active segments across lines.
+*   **Horizontal Edges (North and South):**  We look at each row of the plot and figure out which top and bottom edges of the squares are exposed.  We do this by comparing each row to the row above and below it.
+*   **Vertical Edges (East and West):**  We handle the left and right edges of the squares separately. Because of how the input data is structured (segments within a row don't overlap), this is simpler.
 
-3. **East and West Perimeter Calculation:** This part is relatively straightforward:
+## 2. Data Representation: The `Plot`
 
-   ```rust
-   (y_start..=y_end).map(|y| rows.range((y, rng_start.clone())..=(y, rng_end.clone())).count() * 2).sum::<usize>()
-   ```
-   It counts the number of segments on each line and multiplies by 2 to account for both east and west sides.
+Before diving into the steps, let's understand how a plot is represented.  A `Plot` is a `BTreeSet` (a sorted set) of tuples: `(usize, PlotSegment)`.
 
-4. **Total Perimeter:**  The final perimeter is computed by summing the north, south, and east/west components:
+*   `usize`:  The row number (y-coordinate).
+*   `PlotSegment`: Represents a continuous horizontal segment within that row.  It has:
+    *   `plant()`:  The type of plant (not relevant for perimeter calculation).
+    *   `Range`: The start and end x-coordinates of the segment (e.g., `3..7` means the segment covers columns 3, 4, 5, and 6).
+    *   `len()`: The length of the segment (e.g., `3..7` has a length of 4).
+    *   `is_overlapping()`: Checks if two segments overlap.
+    * `get_overlap()`: Calculates by how much two segments overlap.
 
-   ```rust
-   north_perimeter_len(Box::new(y_start..=y_end)) + // Top-down perimeter
-       north_perimeter_len(Box::new((y_start..=y_end).rev())) + // Bottom-up perimeter
-       // ... East and West perimeter calculation ...
-   ```
+**Example:**  A `Plot` might look like this (conceptually):
+
+```
+Plot:
+  Row 1:  Segment covering columns 2..5
+  Row 2:  Segment covering columns 1..4
+  Row 4:  Segment covering columns 6..8
+```
+
+## 3. Step-by-Step Perimeter Calculation
+
+### Step 1: Find the Top and Bottom Rows
+
+We need to know the range of rows we're dealing with.
+
+```rust
+let &(y_start, ref seg) = rows.first().unwrap();
+let y_end = rows.last().unwrap().0;
+```
+
+*   `y_start`:  The row number of the very first segment in the plot (the lowest y-value).
+*   `y_end`: The row number of the very last segment in the plot (the highest y-value).
+
+### Step 2: Calculate North and South Perimeters (Horizontal Edges)
+
+This is the core of the algorithm. We use a helper function (closure) called `count_north_perimeter`.  The trick is that we use it *twice*: once to calculate the "north" (top) edges and once to calculate the "south" (bottom) edges.
+
+#### Step 2a: Understanding `count_north_perimeter`
+
+```rust
+let count_north_perimeter = | range: Box<dyn Iterator<Item = usize>>| -> usize  {
+    range.map(|y| { // For each row 'y' in the given range...
+        rows
+            .range( (y, rng_start.clone()) ..= (y, rng_end.clone()) ) // Get all segments in row 'y'.
+            .map(|(_, seg)| { // For each segment 'seg' in row 'y'...
+                // Calculate the exposed part of the NORTH edge of 'seg'.
+                seg.len() as usize - rows // Start with the full length of the segment.
+                    .range( (y-1, rng_start.clone()) ..= (y-1, rng_end.clone()) ) // Get segments in the row ABOVE 'y'.
+                    .filter(|(_,nseg)| nseg.is_overlapping(seg) ) // Keep only the segments that overlap with 'seg'.
+                    .map(|(_,nseg)| nseg.get_overlap(seg) as usize) // Get the length of each overlap.
+                    .sum::<usize>() // Sum up all the overlaps.
+            })
+            .sum::<usize>() // Sum the exposed north edges for all segments in row 'y'.
+    })
+    .sum::<usize>() // Sum the exposed north edges for all rows in the range.
+};
+```
+
+**Intuition:**
+
+1.  **Iterate through Rows:**  The `range` argument determines which rows we process.
+2.  **Get Segments in Current Row:**  For each row `y`, we get all `PlotSegment`s in that row. `rng_start` and `rng_end` are just dummy segments that span the entire possible x-range, ensuring we select *all* segments in row `y`.
+3.  **Calculate Exposed North Edge of Each Segment:**
+    *   Start with the full length of the segment (`seg.len()`).
+    *   Find all segments in the row *above* (`y-1`).
+    *   Filter to keep only the segments that *overlap* with the current segment (`seg`).
+    *   Calculate the *length* of each overlap.
+    *   *Subtract* the total overlap length from the segment's length. This gives us the exposed portion of the north edge.
+4.  **Sum Across Segments and Rows:** We sum the exposed north edges for all segments in the row, and then sum those results for all rows in the given range.
+
+#### Step 2b: Calculating the North Perimeter
+
+```rust
+count_north_perimeter(Box::new(y_start..=y_end)) // North
+```
+
+We call `count_north_perimeter` with the range of rows from `y_start` to `y_end`.  This calculates the exposed *top* edges of all segments in the plot.
+
+**Example:**
+
+```
+Row 1:   ####    (Segment: 2..6)
+Row 2:  #####    (Segment: 1..6)
+```
+
+*   **Row 1:**  The segment in Row 1 has no segments above it.  So, its entire length (4) contributes to the north perimeter.
+*   **Row 2:** The segment in row 2 overlaps with row 1 from x=2 to x=5. The overlap is of length 4. The segment is of length 5, and therefore the north perimeter contribution is 5-4=1.
+
+#### Step 2c: Calculating the South Perimeter
+
+```rust
+count_north_perimeter(Box::new((y_start..=y_end).rev())) // South
+```
+
+We call `count_north_perimeter` *again*, but this time with the row range *reversed* (`(y_start..=y_end).rev()`). This cleverly reuses the same logic to calculate the exposed *bottom* edges.  By reversing the row order, we're effectively treating the row *below* as the "row above" in the `count_north_perimeter` logic.
+
+**Example (Continuing from above):**
+
+*   **Row 2 (Processed First):** The segment in Row 2 has no row below. The segment's entire length (5) goes to the south perimeter.
+*   **Row 1 (Processed second):**  The segment in row 1 overlaps with the segment in row 2 with overlap length of 4, so it contributes a length 4-4=0 to the south perimeter.
+
+### Step 3: Calculate East and West Perimeters (Vertical Edges)
+
+```rust
+(y_start ..= y_end).map(|y|
+    rows.range( (y,rng_start.clone()) ..= (y,rng_end.clone()) ).count() * 2
+).sum::<usize>()
+```
+
+This part is much simpler.  Because segments within the same row *do not overlap*, we know that *every* segment contributes two vertical edges (one on the left, one on the right).
+
+1.  **Iterate through Rows:**  For each row `y`...
+2.  **Count Segments:**  Count the number of segments in that row.
+3.  **Multiply by Two:**  Multiply the segment count by 2 (for the two vertical edges per segment).
+4.  **Sum:**  Sum the results for all rows.
+
+**Example:**
+
+```
+Row 1:  ####
+Row 2:  #####
+Row 3:  ##
+```
+
+*   Row 1: 1 segment * 2 = 2
+*   Row 2: 1 segment * 2 = 2
+*   Row 3: 1 segment * 2 = 2
+*   Total East/West Perimeter: 2 + 2 + 2 = 6
+
+### Step 4: Combine All Perimeters
+
+Finally, we add up the north, south, and east/west perimeters to get the total perimeter:
+
+```rust
+// Total Perimeter
+north_perimeter + south_perimeter + east_west_perimeter
+```
+
+## 4. Complete Example
+
+Let's consider a slightly more complex example:
+
+```
+Row 1:  ####       ##
+Row 2:  #####    #####
+Row 3:              ##
+```
+
+1.  **`y_start` = 1, `y_end` = 3**
+
+2.  **North Perimeter:**
+    *   Row 1: (4 + 2) = 6 (no row above)
+    *   Row 2: (5-4) + (5-2) = 1 + 3 = 4 (overlap with row 1)
+    *   Row 3: 0 + (2-2)=0 (overlap with row 2)
+    *   Total North: 6 + 4 + 0 = 10
+
+3.  **South Perimeter:**
+    *   Row 3: (0 + 2) = 2 (no row below)
+    *   Row 2: (5-2) + (5-0) = 3 + 5 = 8
+    *   Row 1: 4-4 + 2-2 = 0
+    *   Total South: 2 + 8 + 0 = 10
+
+4.  **East/West Perimeter:**
+    *   Row 1: 2 segments * 2 = 4
+    *   Row 2: 2 segments * 2 = 4
+    *   Row 3: 1 segment * 2 = 2
+    *   Total East/West: 4 + 4 + 2 = 10
+
+5.  **Total Perimeter:** 10 + 10 + 10 = 30
 
 **Core Idea:** The algorithm cleverly uses overlap detection to avoid explicit boundary tracing. By considering overlaps between consecutive lines, it accurately subtracts shared edges, resulting in the correct external perimeter. The top-down and bottom-up traversals ensure complete coverage of all edges.  The use of iterators and functional programming enhances efficiency and readability.
