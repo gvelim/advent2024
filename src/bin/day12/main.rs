@@ -161,11 +161,9 @@ fn perimeter(rows: &Plot) -> usize {
         // to scan bottom->up; we scan top->bottom using the reverse line numbers
         north_perimeter_len(Box::new((y_start..=y_end).rev())) +
         // scan left->right; every segment is bounded byone east & one west, aka 2
-        (y_start ..= y_end)
-            .map(|y| rows
-                .range( (y,rng_start.clone()) ..= (y,rng_end.clone()) ).count() * 2
-            )
-            .sum::<usize>()
+        (y_start ..= y_end).map(|y|
+            rows.range( (y,rng_start.clone()) ..= (y,rng_end.clone()) ).count() * 2
+        ).sum::<usize>()
 }
 
 #[cfg(test)]
