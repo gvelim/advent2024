@@ -134,32 +134,29 @@ fn perimeter(rows: &Plot) -> usize {
     let rng_end = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
 
     // calculate the north perimeter of the plot
-    let north_perimeter_len = | range: Box<dyn Iterator<Item = usize>>| -> usize  {
-        range.fold((0, Vec::<PlotSegment>::new()), |(plot_total, northern_segs), y| {
-            let (line_sum, line_segs) = rows
+    let count_north_perimeter = | range: Box<dyn Iterator<Item = usize>>| -> usize  {
+        range.map(|y| {
+            rows
                 // for each segment in line `y`
-                .range((y,rng_start.clone()) ..= (y,rng_end.clone()))
-                .fold( (0, Vec::<PlotSegment>::new()), |(line_sum, mut curr_segs), (_, seg)| {
+                .range( (y, rng_start.clone()) ..= (y, rng_end.clone()) )
+                .map(|(_, seg)| {
                     // calculate perimeter on segment's north side
                     // Sum( segment overlapping area against segment(s) above)
-                    let overlapping_area = northern_segs
-                        .iter()
-                        .filter(|nseg| nseg.is_overlapping(seg) )
-                        .map(|nseg| nseg.get_overlap(seg) as usize)
-                        .sum::<usize>();
-                    // store segment for comparison when we process the line below; next iteration
-                    curr_segs.push(seg.clone());
-                    // Segment's north perimeter = Segment Lenght - Overlapping area
-                    (line_sum + seg.len() as usize - overlapping_area, curr_segs)
-                });
-            (plot_total + line_sum, line_segs)
-        }).0
+                    seg.len() as usize - rows
+                        .range( (y-1, rng_start.clone()) ..= (y-1, rng_end.clone()) )
+                        .filter(|(_,nseg)| nseg.is_overlapping(seg) )
+                        .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
+                        .sum::<usize>()
+                })
+                .sum::<usize>()
+        })
+        .sum::<usize>()
     };
 
     // scan top->down; so we get the north perimeter count
-    north_perimeter_len(Box::new(y_start..=y_end)) +
+    count_north_perimeter(Box::new(y_start..=y_end)) +
         // to scan bottom->up; we scan top->bottom using the reverse line numbers
-        north_perimeter_len(Box::new((y_start..=y_end).rev())) +
+        count_north_perimeter(Box::new((y_start..=y_end).rev())) +
         // scan left->right; every segment is bounded byone east & one west, aka 2
         (y_start ..= y_end).map(|y|
             rows.range( (y,rng_start.clone()) ..= (y,rng_end.clone()) ).count() * 2
