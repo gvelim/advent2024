@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::{collections::{BTreeSet, HashMap}, ops::RangeInclusive};
 use advent2024::id_generator;
 use super::segment::{extract_ranges, PlotSegment, Seed};
 
@@ -98,34 +98,43 @@ pub(super) fn area(rows: &Plot) -> usize {
 }
 
 pub(super) fn perimeter(rows: &Plot) -> usize {
-    let y_start = rows.first().unwrap().0;
-    let y_end = rows.last().unwrap().0;
+    let y_range = get_plot_y_range(rows);
 
     let count_east_west_perimeter = west_east_perimeter_counter(rows);
     let count_north_perimeter = north_perimeter_counter(rows);
 
-    count_north_perimeter(Box::new(y_start..=y_end)) +
-        // to scan bottom->up == scanning top->bottom using the reverse line numbers
-        count_north_perimeter(Box::new((y_start..=y_end).rev())) +
-        count_east_west_perimeter(Box::new(y_start..=y_end))
+    count_north_perimeter(Box::new(y_range.clone())) +
+        // Scan South Perimeter from bottom->up == scanning top->bottom using the reverse line numbers
+        count_north_perimeter(Box::new(y_range.clone().rev())) +
+        count_east_west_perimeter(Box::new(y_range.clone()))
 }
 
+fn get_plot_y_range(rows: &Plot) -> RangeInclusive<usize> {
+    let y_start  = rows.first().unwrap().0;
+    let y_end  = rows.last().unwrap().0;
+    y_start..=y_end
+}
+
+fn get_plot_bounding_segs(rows: &Plot) -> (PlotSegment, PlotSegment) {
+    let (_, seg) = rows.first().unwrap();
+    let west_bound = PlotSegment::new(seg.plant(), 0..1);
+    let east_bound = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
+    (west_bound, east_bound)
+}
 
 fn north_perimeter_counter(rows: &Plot) -> impl Fn(Box<dyn Iterator<Item = usize>>) -> usize  {
-    let (_, seg) = rows.first().unwrap();
-    let rng_start = PlotSegment::new(seg.plant(), 0..1);
-    let rng_end = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
+    let (west_bound, east_bound) = get_plot_bounding_segs(rows);
 
     move | range: Box<dyn Iterator<Item = usize>>| -> usize {
         range.map(|y| {
             rows
                 // for each segment in line `y`
-                .range( (y, rng_start.clone()) ..= (y, rng_end.clone()) )
+                .range( (y, west_bound.clone()) ..= (y, east_bound.clone()) )
                 .map(|(_, seg)| {
                     // calculate perimeter on segment's north side
                     // Sum( segment overlapping area against segment(s) above)
                     seg.len() as usize - rows
-                        .range( (y-1, rng_start.clone()) ..= (y-1, rng_end.clone()) )
+                        .range( (y-1, west_bound.clone()) ..= (y-1, east_bound.clone()) )
                         .filter(|(_,nseg)| nseg.is_overlapping(seg) )
                         .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
                         .sum::<usize>()
@@ -137,12 +146,15 @@ fn north_perimeter_counter(rows: &Plot) -> impl Fn(Box<dyn Iterator<Item = usize
 }
 
 fn west_east_perimeter_counter(rows: &Plot) -> impl Fn(Box<dyn Iterator<Item = usize>>) -> usize {
-    let (_, seg) = rows.first().unwrap();
-    let rng_start = PlotSegment::new(seg.plant(), 0..1);
-    let rng_end = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
+    let (west_bound, east_bound) = get_plot_bounding_segs(rows);
 
     move |range: Box<dyn Iterator<Item = usize>>| -> usize {
-        range.map(|y| rows.range( (y,rng_start.clone()) ..= (y,rng_end.clone()) ).count() * 2 ).sum::<usize>()
+        range
+            .map(|y|
+                rows.range( (y,west_bound.clone()) ..= (y,east_bound.clone()) )
+                    .count() * 2
+            )
+            .sum::<usize>()
     }
 }
 
