@@ -58,7 +58,7 @@ fn parse_garden(input: &str) -> Garden {
             for segment in segments.into_iter() {
                 // find within current map 1, all active segments indeces that
                 // (a) overlap with && (b) have same plant type and flag those as matched
-                let mut matched = curr_aseg
+                let matched = curr_aseg
                     .iter_mut()
                     .enumerate()
                     .filter_map(|(i, (aseg, _, m))|
@@ -78,7 +78,7 @@ fn parse_garden(input: &str) -> Garden {
                 // push new segment to next active segments map 2 under the master ID
                 next_aseg.push((segment, master_id, false));
                 // get index of each matching plot
-                while let Some(index) = matched.pop() {
+                matched.into_iter().for_each(|index| {
                     // clone plot and plot_id; don't remove it as queued up segments may also match it
                     let (seg, plot_id, _) = curr_aseg[index].clone();
                     // push active segment into garden map under its original plot ID and using current line number
@@ -92,7 +92,7 @@ fn parse_garden(input: &str) -> Garden {
                             .or_default()
                             .extend(plot);
                     }
-                }
+                });
             }
 
             // Empty vector with unmatched segments by moving to the garden map under their plot ID and current line number
@@ -127,7 +127,7 @@ fn perimeter(rows: &Plot) -> usize {
     let rng_start = PlotSegment::new(seg.plant(), 0..1);
     let rng_end = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
 
-    // calculate the north perimeter of the plot
+    // scan top->down; so we calculate the north perimeter count
     let count_north_perimeter = | range: Box<dyn Iterator<Item = usize>>| -> usize  {
         range.map(|y| {
             rows
@@ -147,14 +147,15 @@ fn perimeter(rows: &Plot) -> usize {
         .sum::<usize>()
     };
 
-    // scan top->down; so we get the north perimeter count
+    // scan left->right; every segment is bounded byone east & one west, aka 2
+    let count_east_west_perimeter = |range: Box<dyn Iterator<Item = usize>>| -> usize {
+        range.map(|y| rows.range( (y,rng_start.clone()) ..= (y,rng_end.clone()) ).count() * 2 ).sum::<usize>()
+    };
+
     count_north_perimeter(Box::new(y_start..=y_end)) +
-        // to scan bottom->up; we scan top->bottom using the reverse line numbers
+        // to scan bottom->up == scanning top->bottom using the reverse line numbers
         count_north_perimeter(Box::new((y_start..=y_end).rev())) +
-        // scan left->right; every segment is bounded byone east & one west, aka 2
-        (y_start ..= y_end).map(|y|
-            rows.range( (y,rng_start.clone()) ..= (y,rng_end.clone()) ).count() * 2
-        ).sum::<usize>()
+        count_east_west_perimeter(Box::new(y_start..=y_end))
 }
 
 #[cfg(test)]
