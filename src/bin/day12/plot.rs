@@ -11,27 +11,22 @@ pub(super) type Garden = HashMap<usize, Plot>;
 pub(super) fn parse_garden(input: &str) -> Garden {
     // id generator fn()
     let mut get_plot_id = id_generator(0);
-
     // line counter
-    let mut line = 0;
+    let mut line_counter = id_generator(0);
 
     let (mut garden, cur_aseg) = input
         .lines()
-        // extract segments
-        .map(extract_ranges)
-        // capture the line number
-        .enumerate()
         // for each line worth of plant segments(plant type, range)
         .fold(
             (Garden::new(), Vec::<(PlotSegment, usize, bool)>::new()),
-            |(mut garden, mut curr_aseg), (l, segments)| {
+            |(mut garden, mut curr_aseg), input| {
 
             // set active map structures next; holding (K,V) as (active segment, ID, matched)
             let mut next_aseg: Vec<(PlotSegment, usize, bool)> = Vec::new();
-            line = l;
+            let line = line_counter();
 
             // for each plant segment
-            for segment in segments.into_iter() {
+            for segment in extract_ranges(input) {
                 // find within current map 1, all active segments indeces that
                 // (a) overlap with && (b) have same plant type and flag those as matched
                 let matched = curr_aseg
@@ -51,6 +46,7 @@ pub(super) fn parse_garden(input: &str) -> Garden {
 
                 // set the master ID for consolidating all matching plot IDs
                 let (_, master_id, _) = curr_aseg[ matched[0] ];
+
                 // push new segment to next active segments map 2 under the master ID
                 next_aseg.push((segment, master_id, false));
                 // get index of each matching plot
@@ -83,10 +79,11 @@ pub(super) fn parse_garden(input: &str) -> Garden {
         });
 
     // move remaining segments to the garden map under their respective plot ID
+    let line = line_counter();
     cur_aseg
         .into_iter()
         .for_each(|(seg, id, _)| {
-            garden.entry(id).or_default().insert((line+1, seg));
+            garden.entry(id).or_default().insert((line, seg));
         });
 
     // return garden map
