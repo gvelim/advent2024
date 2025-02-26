@@ -12,7 +12,7 @@ pub(super) fn parse_garden(input: &str) -> Garden {
     // id generator fn()
     let mut get_plot_id = id_generator(0);
     // line counter
-    let mut line_counter = id_generator(0);
+    let mut current_line = id_generator(0);
 
     let (mut garden, mut g_line) = input
         .lines()
@@ -23,7 +23,7 @@ pub(super) fn parse_garden(input: &str) -> Garden {
 
             // set active map structures next; holding (K,V) as (active segment, ID, matched)
             let mut n_line = GardenLine::default();
-            let line = line_counter();
+            let line = current_line();
 
             // for each plant segment
             for segment in extract_ranges(input) {
@@ -80,7 +80,7 @@ pub(super) fn parse_garden(input: &str) -> Garden {
         });
 
     // move plot segments remaining to the garden map under their respective plot ID
-    let line = line_counter();
+    let line = current_line();
     g_line
         .drain()
         .for_each(|(seg, id, _)| {
@@ -90,7 +90,6 @@ pub(super) fn parse_garden(input: &str) -> Garden {
     // return garden map
     garden
 }
-
 
 #[derive(Default)]
 struct GardenLine {
