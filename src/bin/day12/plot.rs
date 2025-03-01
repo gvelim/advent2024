@@ -184,7 +184,7 @@ fn get_plot_y_range(rows: &Plot) -> RangeInclusive<usize> {
     y_start..=y_end
 }
 
-fn get_plot_bounding_segs(rows: &Plot) -> (PlotSegment, PlotSegment) {
+pub fn get_plot_bounding_segs(rows: &Plot) -> (PlotSegment, PlotSegment) {
     let (_, seg) = rows.first().unwrap();
     let west_bound = PlotSegment::new(seg.plant(), 0..1);
     let east_bound = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
