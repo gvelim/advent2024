@@ -1,9 +1,9 @@
-use std::{collections::{BTreeSet, HashMap}, ops::{Index, RangeInclusive}, rc::Rc};
+use std::{collections::{BTreeMap, BTreeSet}, ops::{Index, RangeInclusive}, rc::Rc};
 use advent2024::id_generator;
 use super::segment::{extract_ranges, PlotSegment, Seed};
 
 pub(super) type Plot = BTreeSet<(usize, PlotSegment)>;
-pub(super) type Garden = HashMap<usize, Plot>;
+pub(super) type Garden = BTreeMap<usize, Plot>;
 
 // garden is a collection of plots expressed by a 1 or more overlapping vertical segments
 // parser extracts and composes plots per scanline
@@ -17,66 +17,14 @@ pub(super) fn parse_garden(input: &str) -> Garden {
     let (mut garden, mut g_line) = input
         .lines()
         // for each line worth of plant segments(plant type, range)
-        .fold(
-            (Garden::new(), GardenLine::default()),
-            |(mut garden, mut g_line), input| {
-
-            // set active map structures next; holding (K,V) as (active segment, ID, matched)
-            let mut n_line = GardenLine::default();
-            let line = line_counter();
-
-            // for each plant segment
-            for segment in extract_ranges(input) {
-                // find garden line segments matching with segment
-                // matching = (a) overlap with && (b) have same plant type
-                let matched = g_line.overlaps(&segment);
-
-                // if empty, then push a new (K,V) (segment, plot ID) into next line segment map 2 and process next segment
-                if matched.is_empty() {
-                    n_line.push(segment, get_plot_id());
-                    continue
-                }
-
-                // set the master ID for consolidating all matching plot IDs
-                let (_, master_id, _) = g_line[ matched[0] ];
-
-                // push new segment to next garden line map 2 under master ID
-                n_line.push(segment, master_id);
-
-                matched
-                    .iter()
-                    // for each matched plot segment
-                    .for_each(|&index| {
-                        // flag it as matched; that is, plot region continues to next line
-                        g_line.flag_matched(index);
-
-                        // clone plot segment and plot_id; don't remove it until all remaining new segments are processed
-                        let (seg, plot_id, _) = g_line[index].clone();
-
-                        // push active segment into garden map under its original plot ID and using current line number
-                        garden.entry(plot_id).or_default().insert((line, seg));
-
-                        // if plot_id is NOT equal to master_id, then consolidate plots
-                        if plot_id != master_id {
-                            // remove plot ID from garden map and hold onto its segments
-                            let plot = garden.remove(&plot_id).unwrap();
-                            // merge removed segments into the plot with master ID
-                            garden.entry(master_id)
-                                .or_default()
-                                .extend(plot);
-                        }
-                    });
-            }
-
-            // Any unmatched line segment marks the end of plot region
-            // hence it is moved to the garden map into their respective plot ID and using current line number
-            g_line
-                .drain_unmatched()
-                .for_each(|(seg, id, _)| {
-                    garden.entry(id).or_default().insert((line, seg));
-                });
-
-            (garden, n_line)
+        .fold((Garden::new(), GardenLine::default()), |(garden, g_line), input| {
+                parse_line_segments(
+                    input,
+                    &mut get_plot_id,
+                    line_counter(),
+                    garden,
+                    g_line
+                )
         });
 
     // move plot segments remaining to the garden map under their respective plot ID
@@ -90,6 +38,72 @@ pub(super) fn parse_garden(input: &str) -> Garden {
     // return garden map
     garden
 }
+
+fn parse_line_segments(
+    input: &str,
+    mut get_plot_id: impl FnMut() -> usize,
+    line: usize,
+    mut garden: Garden,
+    mut g_line: GardenLine
+) -> (Garden, GardenLine)
+{
+    // set active map structures next; holding (K,V) as (active segment, ID, matched)
+    let mut new_g_line = GardenLine::default();
+
+    // for each plant segment
+    for segment in extract_ranges(input) {
+        // find garden line segments matching with segment
+        // matching = (a) overlap with && (b) have same plant type
+        let matched = g_line.overlaps(&segment);
+
+        // if empty, then push a new (K,V) (segment, plot ID) into next line segment map 2 and process next segment
+        if matched.is_empty() {
+            new_g_line.push(segment, get_plot_id());
+            continue
+        }
+
+        // set the master ID for consolidating all matching plot IDs
+        let (_, master_id, _) = g_line[ matched[0] ];
+
+        // push new segment to next garden line map 2 under master ID
+        new_g_line.push(segment, master_id);
+
+        matched
+            .iter()
+            // for each matched plot segment
+            .for_each(|&index| {
+                // flag it as matched; that is, plot region continues to next line
+                g_line.flag_matched(index);
+
+                // clone plot segment and plot_id; don't remove it until all remaining new segments are processed
+                let (seg, plot_id, _) = g_line[index].clone();
+
+                // push active segment into garden map under its original plot ID and using current line number
+                garden.entry(plot_id).or_default().insert((line, seg));
+
+                // if plot_id is NOT equal to master_id, then consolidate plots
+                if plot_id != master_id {
+                    // remove plot ID from garden map and hold onto its segments
+                    let plot = garden.remove(&plot_id).unwrap();
+                    // merge removed segments into the plot with master ID
+                    garden.entry(master_id)
+                        .or_default()
+                        .extend(plot);
+                }
+            });
+    }
+
+    // Any unmatched line segment marks the end of plot region
+    // hence it is moved to the garden map into their respective plot ID and using current line number
+    g_line
+        .drain_unmatched()
+        .for_each(|(seg, id, _)| {
+            garden.entry(id).or_default().insert((line, seg));
+        });
+
+    (garden, new_g_line)
+}
+
 
 
 #[derive(Default)]
