@@ -10,25 +10,24 @@ pub(super) type Garden = BTreeMap<usize, Plot>;
 // a plot is composed out of multiple scanlines
 pub(super) fn parse_garden(input: &str) -> Garden {
     // id generator fn()
-    let mut get_plot_id = id_generator(0);
+    let mut get_new_plot_id = id_generator(0);
     // line counter
-    let mut line_counter = id_generator(0);
+    let mut get_line_number = id_generator(0);
 
     let (mut garden, mut g_line) = input
         .lines()
-        // for each line worth of plant segments(plant type, range)
-        .fold((Garden::new(), GardenLine::default()), |(garden, g_line), input| {
-                process_line(
-                    input,
-                    garden,
-                    g_line,
-                    &mut get_plot_id,
-                    line_counter()
-                )
+        .fold((Garden::new(), LastGardenScanLine::default()), |(garden, g_line), input| {
+            process_line(
+                input,
+                garden,
+                g_line,
+                &mut get_new_plot_id,
+                get_line_number()
+            )
         });
 
     // move plot segments remaining to the garden map under their respective plot ID
-    let line = line_counter();
+    let line = get_line_number();
     g_line
         .drain()
         .for_each(|(seg, id, _)| {
@@ -39,19 +38,20 @@ pub(super) fn parse_garden(input: &str) -> Garden {
     garden
 }
 
+// for each new segment identify the plot that is overlapping with and assign the segment the plot's ID
 fn process_line(
     input: &str,
     garden: Garden,
-    g_line: GardenLine,
+    g_line: LastGardenScanLine,
     mut get_plot_id: impl FnMut() -> usize,
     line: usize
-) -> (Garden, GardenLine)
+) -> (Garden, LastGardenScanLine)
 {
-    let mut new_g_line = GardenLine::default();
+    let mut new_g_line = LastGardenScanLine::default();
     // for each plant segment
     let (mut garden, mut g_line) = extract_ranges(input)
         .fold((garden, g_line), |(garden, g_line), segment| {
-            let (g, gl, seg_id) = process_segment(
+            let (garden, g_line, seg_id) = process_segment(
                 &segment,
                 garden,
                 g_line,
@@ -59,11 +59,11 @@ fn process_line(
                 &mut get_plot_id
             );
             new_g_line.push(segment, seg_id);
-            (g, gl)
+            (garden, g_line)
         });
 
-    // Any unmatched line segment marks the end of plot region
-    // hence it is moved to the garden map into their respective plot ID and using current line number
+    // Any scanline segments that didn't match indicate the end of plot region
+    // therefore we move such segments to the garden map using their respective plot ID and current line number
     g_line
         .drain_unmatched()
         .for_each(|(seg, id, _)| {
@@ -73,37 +73,41 @@ fn process_line(
     (garden, new_g_line)
 }
 
+// every segment is tested against the known plots
+// if no overlaps found then a new plot ID is returned marking the start of a new plot region
+// otherwise the ID of the overlapping plot region is returned
+// the function also marks known plots as matched
+// If the segment overlaps with multiple plots, the plots are merged under a single ID (master_id)
 fn process_segment(
     segment: &PlotSegment,
-    mut garden: Garden,
-    mut g_line: GardenLine,
+    garden: Garden,
+    g_line: LastGardenScanLine,
     line: usize,
     mut get_plot_id: impl FnMut() -> usize
-) -> (Garden, GardenLine, usize)
+) -> (Garden, LastGardenScanLine, usize)
     {
-    // find garden line segments matching with segment
-    // matching = (a) overlap with && (b) have same plant type
+    // find active plots matching this segment
+    // matching = (a) overlapping with && (b) have same plant type
     let matched = g_line.overlaps(segment);
 
-    // if empty, then push a new (K,V) (segment, plot ID) into next line segment map 2 and process next segment
+    // if empty, then return a new plot ID for the segment
     if matched.is_empty() {
         return (garden, g_line, get_plot_id());
     }
 
-    // set the master ID for consolidating all matching plot IDs
+    // otherwise, use the first matching plot ID as the master ID for consolidating all matched plots
     let (_, master_id, _) = g_line[ matched[0] ];
 
-    matched
-        .iter()
+    matched.iter()
         // for each matched plot segment
-        .for_each(|&index| {
+        .fold((garden, g_line, master_id), |(mut garden, mut g_line, master_id), &index| {
             // flag it as matched; that is, plot region continues to next line
             g_line.flag_matched(index);
 
             // clone plot segment and plot_id; don't remove it until all remaining new segments are processed
             let (seg, plot_id, _) = g_line[index].clone();
 
-            // push active segment into garden map under its original plot ID and using current line number
+            // move plot segment onto the garden map under the current line number
             garden.entry(plot_id).or_default().insert((line, seg));
 
             // if plot_id is NOT equal to master_id, then consolidate plots
@@ -115,18 +119,17 @@ fn process_segment(
                 .or_default()
                 .extend(plot);
             }
-        });
-
-    (garden, g_line, master_id)
+            (garden, g_line, master_id)
+        })
 }
 
 
 #[derive(Default)]
-struct GardenLine {
+struct LastGardenScanLine {
     segments: Vec::<(PlotSegment, usize, bool)>,
 }
 
-impl Index<usize> for GardenLine {
+impl Index<usize> for LastGardenScanLine {
     type Output = (PlotSegment, usize, bool);
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -134,8 +137,8 @@ impl Index<usize> for GardenLine {
     }
 }
 
-impl GardenLine {
-    fn overlaps(&self, segment: &PlotSegment) -> Rc<[usize]> {
+impl LastGardenScanLine {
+    fn overlaps(&self, segment: &PlotSegment) -> Vec<usize> {
         self.segments
             .iter()
             .enumerate()
@@ -143,7 +146,7 @@ impl GardenLine {
                 if aseg.plant() == segment.plant() &&
                     aseg.is_overlapping(segment) { Some(i) } else { None }
             )
-            .collect::<Rc<[_]>>()
+            .collect::<Vec<_>>()
     }
     fn drain(&mut self) -> impl Iterator<Item = (PlotSegment, usize, bool)> {
         self.segments.drain(..)
