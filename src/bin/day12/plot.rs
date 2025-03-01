@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet}, ops::{Index, RangeInclusive}, rc::Rc};
+use std::{collections::{BTreeMap, BTreeSet}, ops::{Index, RangeInclusive}};
 use advent2024::id_generator;
 use super::segment::{extract_ranges, PlotSegment, Seed};
 
@@ -122,7 +122,6 @@ fn process_segment(
             (garden, g_line, master_id)
         })
 }
-
 
 #[derive(Default)]
 struct LastGardenScanLine {
