@@ -50,8 +50,7 @@ fn parse_line_segments(
     // set active map structures next; holding (K,V) as (active segment, ID, matched)
     let mut new_g_line = GardenLine::default();
 
-    // for each plant segment
-    for segment in extract_ranges(input) {
+    let segment_matching = |segment: PlotSegment| {
         // find garden line segments matching with segment
         // matching = (a) overlap with && (b) have same plant type
         let matched = g_line.overlaps(&segment);
@@ -59,7 +58,7 @@ fn parse_line_segments(
         // if empty, then push a new (K,V) (segment, plot ID) into next line segment map 2 and process next segment
         if matched.is_empty() {
             new_g_line.push(segment, get_plot_id());
-            continue
+            return;
         }
 
         // set the master ID for consolidating all matching plot IDs
@@ -87,11 +86,14 @@ fn parse_line_segments(
                     let plot = garden.remove(&plot_id).unwrap();
                     // merge removed segments into the plot with master ID
                     garden.entry(master_id)
-                        .or_default()
-                        .extend(plot);
+                    .or_default()
+                    .extend(plot);
                 }
             });
-    }
+    };
+
+    // for each plant segment
+    extract_ranges(input).for_each(segment_matching);
 
     // Any unmatched line segment marks the end of plot region
     // hence it is moved to the garden map into their respective plot ID and using current line number
