@@ -169,13 +169,10 @@ pub(super) fn area(rows: &Plot) -> usize {
 pub(super) fn perimeter(rows: &Plot) -> usize {
     let y_range = get_plot_y_range(rows);
 
-    let count_east_west_perimeter = west_east_perimeter_counter(rows);
-    let count_north_perimeter = north_perimeter_counter(rows);
-
-    count_north_perimeter(Box::new(y_range.clone())) +
+    north_perimeter_counter(rows, y_range.clone()) +
         // Scan South Perimeter from bottom->up == scanning top->bottom using the reverse line numbers
-        count_north_perimeter(Box::new(y_range.clone().rev())) +
-        count_east_west_perimeter(Box::new(y_range.clone()))
+        north_perimeter_counter(rows, y_range.clone().rev()) +
+        rows.iter().count() * 2
 }
 
 fn get_plot_y_range(rows: &Plot) -> RangeInclusive<usize> {
@@ -191,40 +188,25 @@ pub fn get_plot_bounding_segs(rows: &Plot) -> (PlotSegment, PlotSegment) {
     (west_bound, east_bound)
 }
 
-fn north_perimeter_counter(rows: &Plot) -> impl Fn(Box<dyn Iterator<Item = usize>>) -> usize  {
+fn north_perimeter_counter(rows: &Plot, range: impl Iterator<Item = usize>) -> usize  {
     let (west_bound, east_bound) = get_plot_bounding_segs(rows);
 
-    move | range: Box<dyn Iterator<Item = usize>>| -> usize {
-        range.map(|y| {
-            rows
-                // for each segment in line `y`
-                .range( (y, west_bound.clone()) ..= (y, east_bound.clone()) )
-                .map(|(_, seg)| {
-                    // calculate perimeter on segment's north side
-                    // Sum( segment overlapping area against segment(s) above)
-                    seg.len() as usize - rows
-                        .range( (y-1, west_bound.clone()) ..= (y-1, east_bound.clone()) )
-                        .filter(|(_,nseg)| nseg.is_overlapping(seg) )
-                        .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
-                        .sum::<usize>()
-                })
-                .sum::<usize>()
-        })
-        .sum::<usize>()
-    }
-}
-
-fn west_east_perimeter_counter(rows: &Plot) -> impl Fn(Box<dyn Iterator<Item = usize>>) -> usize {
-    let (west_bound, east_bound) = get_plot_bounding_segs(rows);
-
-    move |range: Box<dyn Iterator<Item = usize>>| -> usize {
-        range
-            .map(|y|
-                rows.range( (y,west_bound.clone()) ..= (y,east_bound.clone()) )
-                    .count() * 2
-            )
+    range.map(|y| {
+        rows
+            // for each segment in line `y`
+            .range( (y, west_bound.clone()) ..= (y, east_bound.clone()) )
+            .map(|(_, seg)| {
+                // calculate perimeter on segment's north side
+                // Sum( segment overlapping area against segment(s) above)
+                seg.len() as usize - rows
+                    .range( (y-1, west_bound.clone()) ..= (y-1, east_bound.clone()) )
+                    .filter(|(_,nseg)| nseg.is_overlapping(seg) )
+                    .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
+                    .sum::<usize>()
+            })
             .sum::<usize>()
-    }
+    })
+    .sum::<usize>()
 }
 
 #[cfg(test)]
