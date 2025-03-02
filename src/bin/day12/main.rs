@@ -7,7 +7,7 @@ use itertools::Itertools;
 use plot::{Garden, area, parse_garden, perimeter};
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day12/input.txt").unwrap();
 
     let garden = parse_garden(&input);
 
@@ -25,6 +25,7 @@ fn main() {
         })
         .sum::<usize>();
 
+    // _display_garden(&garden);
     println!("Garden total cost : {total}");
 }
 
