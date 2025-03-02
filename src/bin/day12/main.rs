@@ -1,24 +1,26 @@
 mod segment;
 mod plot;
 
+use std::collections::BTreeSet;
+
 use itertools::Itertools;
-use plot::{area, parse_garden, perimeter};
+use plot::{Garden, area, parse_garden, perimeter};
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day12/input.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
 
     let garden = parse_garden(&input);
 
     let total = garden
         .iter()
         .inspect(|(_, plot)|
-            display_plot(plot)
+            _display_plot(plot)
         )
         .map(|(_,v)|
             (area(v), perimeter(v))
         )
         .map(|(a,b)| {
-            println!("area: {} * perimeter: {} = {}", a, b, a * b);
+            println!("area: {} * perimeter: {} = {}\n", a, b, a * b);
             a * b
         })
         .sum::<usize>();
@@ -26,7 +28,28 @@ fn main() {
     println!("Garden total cost : {total}");
 }
 
-fn display_plot(plot: &plot::Plot) {
+fn _display_garden(garden: &Garden) {
+    let segments = garden
+        .values()
+        .flat_map(|plot|  plot.iter())
+        .collect::<BTreeSet<_>>();
+
+    segments
+        .into_iter()
+        .chunk_by(|(y,_)| y)
+        .into_iter()
+        .for_each(|(_,segs)| {
+            segs.into_iter()
+                .for_each(|(_,seg)|{
+                    (seg.start() .. seg.end()).for_each(|_| {
+                        print!("{}", seg.plant());
+                    });
+                });
+            println!();
+        });
+}
+
+fn _display_plot(plot: &plot::Plot) {
     use plot::get_plot_bounding_segs;
     use std::rc::Rc;
 
@@ -49,6 +72,6 @@ fn display_plot(plot: &plot::Plot) {
                 None => print!("."),
             }
         });
-        println!();
+        println!(" = {:?}", line_segments);
     });
 }

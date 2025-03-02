@@ -46,9 +46,7 @@ impl PartialOrd for PlotSegment {
 // required for BTreeSet to keep the segments sorted by line location
 impl Ord for PlotSegment {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0
-            .cmp(&other.0)
-            .then_with(|| self.1.start.cmp(&other.1.start))
+        self.1.start.cmp(&other.1.start)
             .then_with(|| self.1.end.cmp(&other.1.end))
     }
 }
