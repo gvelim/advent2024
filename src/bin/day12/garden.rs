@@ -31,7 +31,7 @@ pub(super) fn parse_garden(input: &str) -> Garden {
     g_line
         .drain()
         .for_each(|(seg, id, _)| {
-            garden.entry(id).or_default().insert((line, seg));
+            garden.entry(id).or_default().insert(line, seg);
         });
 
     // return garden map
@@ -67,7 +67,7 @@ fn process_line(
     g_line
         .drain_unmatched()
         .for_each(|(seg, id, _)| {
-            garden.entry(id).or_default().insert((line, seg));
+            garden.entry(id).or_default().insert(line, seg);
         });
 
     (garden, new_g_line)
@@ -108,7 +108,7 @@ fn process_segment(
             let (seg, plot_id, _) = g_line[index].clone();
 
             // move plot segment onto the garden map under the current line number
-            garden.entry(plot_id).or_default().insert((line, seg));
+            garden.entry(plot_id).or_default().insert(line, seg);
 
             // if plot_id is NOT equal to master_id, then consolidate plots
             if plot_id != master_id {

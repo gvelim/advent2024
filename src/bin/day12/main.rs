@@ -2,8 +2,6 @@ mod segment;
 mod plot;
 mod garden;
 
-
-use plot::{area, perimeter, _display_plot};
 use garden::parse_garden;//, _display_garden};
 
 fn main() {
@@ -13,11 +11,9 @@ fn main() {
 
     let total = garden
         .iter()
-        .inspect(|(_, plot)|
-            _display_plot(plot)
-        )
+        .inspect(|(_, plot)| println!("{:?}", plot))
         .map(|(_,v)|
-            (area(v), perimeter(v))
+            (v.area(), v.perimeter())
         )
         .map(|(a,b)| {
             println!("area: {} * perimeter: {} = {}\n", a, b, a * b);
@@ -25,6 +21,6 @@ fn main() {
         })
         .sum::<usize>();
 
-    // _display_garden(&garden);
+    println!("{:?}", &garden);
     println!("Garden total cost : {total}");
 }
