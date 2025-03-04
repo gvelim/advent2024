@@ -2,12 +2,12 @@ mod segment;
 mod plot;
 mod garden;
 
-use garden::parse_garden;//, _display_garden};
+use garden::Garden;//, _display_garden};
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day12/input.txt").unwrap();
 
-    let garden = parse_garden(&input);
+    let garden = Garden::parse_garden(&input);
 
     let total = garden
         .iter()

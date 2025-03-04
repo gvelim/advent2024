@@ -1,65 +1,75 @@
+use std::fmt::Debug;
 use std::{collections::BTreeMap, ops::Index};
 use advent2024::id_generator;
 use super::segment::{extract_ranges, PlotSegment};
 use super::plot::Plot;
 
-pub(super) type Garden = BTreeMap<usize, Plot>;
+#[derive(Default)]
+pub(super) struct  Garden {
+    plots: BTreeMap<usize, Plot>
+}
 
-// garden is a collection of plots expressed by a 1 or more overlapping vertical segments
-// parser extracts and composes plots per scanline
-// a plot is composed out of multiple scanlines
-pub(super) fn parse_garden(input: &str) -> Garden {
-    // id generator fn()
-    let mut get_new_plot_id = id_generator(0);
-    // line counter
-    let mut get_line_number = id_generator(0);
+impl Garden {
+    pub(super) fn iter(&self) -> impl Iterator<Item = (&usize, &Plot)> {
+        self.plots.iter()
+    }
 
-    let (mut garden, mut g_line) = input
-        .lines()
-        .fold((Garden::new(), LastGardenScanLine::default()), |(garden, g_line), input| {
-            process_line(
-                input,
-                garden,
-                g_line,
-                &mut get_new_plot_id,
-                get_line_number()
-            )
-        });
+    // garden is a collection of plots expressed by a 1 or more overlapping vertical segments
+    // parser extracts and composes plots per scanline
+    // a plot is composed out of multiple scanlines
+    pub(super) fn parse_garden(input: &str) -> Garden {
+        // id generator fn()
+        let mut get_new_plot_id = id_generator(0);
+        // line counter
+        let mut get_line_number = id_generator(0);
 
-    // move plot segments remaining to the garden map under their respective plot ID
-    let line = get_line_number();
-    g_line
-        .drain()
-        .for_each(|(seg, id, _)| {
-            garden.entry(id).or_default().insert(line, seg);
-        });
+        let (mut plots, mut g_line) = input
+            .lines()
+            .fold((BTreeMap::<usize, Plot>::new(), LastGardenScanLine::default()), |(plots, g_line), input| {
+                process_line(
+                    input,
+                    plots,
+                    g_line,
+                    &mut get_new_plot_id,
+                    get_line_number()
+                )
+            });
 
-    // return garden map
-    garden
+        // move plot segments remaining to the garden map under their respective plot ID
+        let line = get_line_number();
+        g_line
+            .drain()
+            .for_each(|(seg, id, _)| {
+                plots.entry(id).or_default().insert(line, seg);
+            });
+
+        // return garden map
+        Garden { plots }
+    }
 }
 
 // for each new segment identify the plot that is overlapping with and assign the segment the plot's ID
 fn process_line(
     input: &str,
-    garden: Garden,
+    plots: BTreeMap<usize, Plot>,
     g_line: LastGardenScanLine,
     mut get_plot_id: impl FnMut() -> usize,
     line: usize
-) -> (Garden, LastGardenScanLine)
+) -> (BTreeMap<usize, Plot>, LastGardenScanLine)
 {
     let mut new_g_line = LastGardenScanLine::default();
     // for each plant segment
-    let (mut garden, mut g_line) = extract_ranges(input)
-        .fold((garden, g_line), |(garden, g_line), segment| {
-            let (garden, g_line, seg_id) = process_segment(
+    let (mut plots, mut g_line) = extract_ranges(input)
+        .fold((plots, g_line), |(plots, g_line), segment| {
+            let (plots, g_line, seg_id) = process_segment(
                 &segment,
-                garden,
+                plots,
                 g_line,
                 line,
                 &mut get_plot_id
             );
             new_g_line.push(segment, seg_id);
-            (garden, g_line)
+            (plots, g_line)
         });
 
     // Any scanline segments that didn't match indicate the end of plot region
@@ -67,10 +77,10 @@ fn process_line(
     g_line
         .drain_unmatched()
         .for_each(|(seg, id, _)| {
-            garden.entry(id).or_default().insert(line, seg);
+            plots.entry(id).or_default().insert(line, seg);
         });
 
-    (garden, new_g_line)
+    (plots, new_g_line)
 }
 
 // every segment is tested against the known plots
@@ -80,11 +90,11 @@ fn process_line(
 // If the segment overlaps with multiple plots, the plots are merged under a single ID (master_id)
 fn process_segment(
     segment: &PlotSegment,
-    garden: Garden,
+    plots: BTreeMap<usize, Plot>,
     g_line: LastGardenScanLine,
     line: usize,
     mut get_plot_id: impl FnMut() -> usize
-) -> (Garden, LastGardenScanLine, usize)
+) -> (BTreeMap<usize, Plot>, LastGardenScanLine, usize)
     {
     // find active plots matching this segment
     // matching = (a) overlapping with && (b) have same plant type
@@ -92,7 +102,7 @@ fn process_segment(
 
     // if empty, then return a new plot ID for the segment
     if matched.is_empty() {
-        return (garden, g_line, get_plot_id());
+        return (plots, g_line, get_plot_id());
     }
 
     // otherwise, use the first matching plot ID as the master ID for consolidating all matched plots
@@ -100,7 +110,7 @@ fn process_segment(
 
     matched.iter()
         // for each matched plot segment
-        .fold((garden, g_line, master_id), |(mut garden, mut g_line, master_id), &index| {
+        .fold((plots, g_line, master_id), |(mut garden, mut g_line, master_id), &index| {
             // flag it as matched; that is, plot region continues to next line
             g_line.flag_matched(index);
 
@@ -123,28 +133,39 @@ fn process_segment(
         })
 }
 
-pub(super) fn _display_garden(garden: &Garden) {
-    use std::collections::BTreeSet;
-    use itertools::Itertools;
+impl Index<&usize> for Garden {
+    type Output = Plot;
 
-    let segments = garden
-        .values()
-        .flat_map(|plot|  plot.iter())
-        .collect::<BTreeSet<_>>();
+    fn index(&self, index:&usize) -> &Self::Output {
+        &self.plots[index]
+    }
+}
 
-    segments
-        .into_iter()
-        .chunk_by(|(y,_)| y)
-        .into_iter()
-        .for_each(|(_,segs)| {
-            segs.into_iter()
-                .for_each(|(_,seg)|{
-                    (seg.start() .. seg.end()).for_each(|_| {
-                        print!("{}", seg.plant());
+impl Debug for Garden {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use std::collections::BTreeSet;
+        use itertools::Itertools;
+
+        let segments = self.plots
+            .values()
+            .flat_map(|plot|  plot.iter())
+            .collect::<BTreeSet<_>>();
+
+        segments
+            .into_iter()
+            .chunk_by(|(y,_)| y)
+            .into_iter()
+            .for_each(|(_,segs)| {
+                segs.into_iter()
+                    .for_each(|(_,seg)|{
+                        (seg.start() .. seg.end()).for_each(|_| {
+                            write!(f, "{}", seg.plant()).ok();
+                        });
                     });
-                });
-            println!();
-        });
+                writeln!(f).ok();
+            });
+        Ok(())
+    }
 }
 
 #[derive(Default)]

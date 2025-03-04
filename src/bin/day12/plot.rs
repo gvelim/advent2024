@@ -26,7 +26,7 @@ impl Plot {
         self.north_perimeter_counter(y_range.clone()) +
             // Scan South Perimeter from bottom->up == scanning top->bottom using the reverse line numbers
             self.north_perimeter_counter(y_range.clone().rev()) +
-            self.rows.iter().count() * 2
+            self.rows.len() * 2
     }
 
     fn get_plot_y_range(self: &Plot) -> RangeInclusive<usize> {
@@ -96,12 +96,12 @@ impl Debug for Plot {
 
 #[cfg(test)]
 mod tests {
-    use super::super::parse_garden;
+    use super::super::Garden;
 
     #[test]
     fn test_garden_parser() {
         let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
-        let garden = parse_garden(&input);
+        let garden = Garden::parse_garden(&input);
 
         // A region of R plants with price 12 * 18 = 216.
         assert_eq!(garden[&1].area(), 12, "expected 12 got {:?}",garden[&1]);
