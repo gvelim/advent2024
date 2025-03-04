@@ -1,4 +1,3 @@
-#![feature(iter_map_windows)]
 mod equation;
 
 use std::time::Instant;
