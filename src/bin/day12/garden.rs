@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::{collections::BTreeMap, ops::Index};
 use advent2024::id_generator;
+use rand::Rng;
 use super::segment::{extract_ranges, PlotSegment};
 use super::plot::Plot;
 
@@ -141,6 +143,8 @@ impl Index<&usize> for Garden {
 
 impl Debug for Garden {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use colored::Colorize;
+        use rand::rng;
         use std::collections::BTreeSet;
         use itertools::Itertools;
 
@@ -149,6 +153,19 @@ impl Debug for Garden {
             .flat_map(|plot|  plot.iter())
             .collect::<BTreeSet<_>>();
 
+        let color_map = ('A'..='Z')
+            .map(|plant|
+                (
+                    plant,
+                    (
+                        rng().random_range(8..=0x7F),
+                        rng().random_range(8..=0x7F),
+                        rng().random_range(8..=0x7F)
+                    )
+                )
+            )
+            .collect::<HashMap<_,_>>();
+
         segments
             .into_iter()
             .chunk_by(|(y,_)| y)
@@ -156,8 +173,9 @@ impl Debug for Garden {
             .for_each(|(_,segs)| {
                 segs.into_iter()
                     .for_each(|(_,seg)|{
+                        let colour = color_map[ &seg.plant()];
                         (seg.start() .. seg.end()).for_each(|_| {
-                            write!(f, "{}", seg.plant()).ok();
+                            write!(f, "{}", String::from(seg.plant()).on_truecolor(colour.0, colour.1, colour.2)).ok();
                         });
                     });
                 writeln!(f).ok();
