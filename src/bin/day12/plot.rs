@@ -1,4 +1,5 @@
 use std::{collections::BTreeSet, fmt::Debug, ops::RangeInclusive};
+
 use super::segment::{PlotSegment, Seed};
 
 #[derive(Default)]
@@ -66,6 +67,7 @@ impl Plot {
 
 impl Debug for Plot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use colored::Colorize;
         use std::rc::Rc;
 
         let last = self.rows.last().unwrap().0;
@@ -83,8 +85,8 @@ impl Debug for Plot {
             for x in left..right {
                 let segment = line_segments.iter().find(|(_, seg)| seg.contains(x));
                 match segment {
-                    Some((_, seg)) => write!(f, "{}", seg.plant())?,
-                    None => write!(f, ".")?,
+                    Some((_, seg)) => write!(f, "{}", String::from(seg.plant()).on_truecolor(16,16,128).bright_yellow())?,
+                    None => write!(f, "{}", "⬝".on_truecolor(16,16,128))?,
                 }
             }
             writeln!(f, " = {:?}", line_segments)?;
