@@ -36,16 +36,18 @@ impl Garden {
             });
 
         // move plot segments remaining to the garden map under their respective plot ID
-        let line = get_line_number();
-        g_line
-            .drain()
-            .for_each(|(seg, id, _)| {
-                plots.entry(id).or_default().insert(line, seg);
-            });
+        push_segments(&mut plots, g_line.drain(), get_line_number());
 
         // return garden map
         Garden { plots }
     }
+}
+
+fn push_segments(plots: &mut BTreeMap<usize, Plot>, g_line: impl Iterator<Item = (PlotSegment, usize, bool)>, line: usize) {
+    g_line
+        .for_each(|(seg, id, _)| {
+            plots.entry(id).or_default().insert(line, seg);
+        });
 }
 
 // for each new segment identify the plot that is overlapping with and assign the segment the plot's ID
@@ -74,11 +76,7 @@ fn process_line(
 
     // Any scanline segments that didn't match indicate the end of plot region
     // therefore we move such segments to the garden map using their respective plot ID and current line number
-    g_line
-        .drain_unmatched()
-        .for_each(|(seg, id, _)| {
-            plots.entry(id).or_default().insert(line, seg);
-        });
+    push_segments(&mut plots, g_line.drain_unmatched(), line);
 
     (plots, new_g_line)
 }
