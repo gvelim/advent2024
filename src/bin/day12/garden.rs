@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::iter::repeat;
 use std::{collections::BTreeMap, ops::Index};
 use advent2024::id_generator;
 use rand::Rng;
@@ -174,9 +175,11 @@ impl Debug for Garden {
                 segs.into_iter()
                     .for_each(|(_,seg)|{
                         let colour = color_map[ &seg.plant()];
-                        (seg.start() .. seg.end()).for_each(|_| {
-                            write!(f, "{}", String::from(seg.plant()).on_truecolor(colour.0, colour.1, colour.2)).ok();
-                        });
+                        let plant = repeat(seg.plant())
+                            .take(seg.len() as usize)
+                            .collect::<String>()
+                            .on_truecolor(colour.0, colour.1, colour.2);
+                        write!(f, "{}", plant).ok();
                     });
                 writeln!(f).ok();
             });
