@@ -5,11 +5,9 @@ fn main() {
 #[cfg(test)]
 mod test {
     use nom::{
-        bytes::complete::tag, character::complete::{
-            alpha1,
-            alphanumeric1
-        },
-        sequence::{
+        bytes::complete::tag,
+        character::complete::alpha1,
+        combinator::map, sequence::{
             preceded,
             separated_pair
         }
@@ -23,10 +21,12 @@ mod test {
             tag::<_,_,()>("Button "),
             alpha1
         );
-        let parse_button_dir = separated_pair(
-            preceded(tag(" X+"), alphanumeric1),
+        let parse_button_dir = map(
+            separated_pair(
+            preceded(tag(" X+"), nom::character::complete::u32),
             tag(","),
-            preceded(tag(" Y+"), alphanumeric1),
+            preceded(tag(" Y+"), nom::character::complete::u32)
+            ), |(a,b)| (a,b)
         );
 
         println!("Parsed button: {:?}",
