@@ -13,6 +13,12 @@ mod test {
         }
     };
 
+    #[derive(Debug)]
+    struct Button {
+        dir: (u32,u32),
+        cost: u8
+    }
+
     #[test]
     fn test_parse() {
         let button = "Button A: X+10, Y+10";
@@ -30,10 +36,13 @@ mod test {
         );
 
         println!("Parsed button: {:?}",
-            separated_pair(
-                parse_button_id,
-                tag(":"),
-                parse_button_dir
+            map(
+                separated_pair(
+                    parse_button_id,
+                    tag(":"),
+                    parse_button_dir
+                ),
+                |(id, dir)| Button { dir, cost: if id == "A" { 3 } else { 1 }}
             )(button)
         );
     }
