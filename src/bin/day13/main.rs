@@ -12,6 +12,20 @@ fn main() {
 }
 
 #[derive(Debug)]
+struct CostCalculator;
+
+impl CostCalculator {
+    fn cost(&self, target: Prize, buttons: &[Button]) -> Option<u32> {
+        // substract target per button
+        // if new target is (0,0) then return Some(Button.cost)
+        // if new target is less than 0 retun None; path has no solution
+        // recurse Min( passing (a) new target, (b) button )
+        None
+    }
+}
+
+
+#[derive(Debug, PartialEq)]
 struct Button {
     dir: (u32,u32),
     cost: u8
@@ -36,7 +50,7 @@ impl FromStr for Button {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Prize(u32,u32);
 
 impl FromStr for Prize {
@@ -64,10 +78,11 @@ mod test {
 
     #[test]
     fn test_parse() {
-        let button = "Button A: X+10, Y+10";
-        let prize = "Prize: X=8400, Y=5400";
-
-        println!("Parsed button: {:?}", button.parse::<Button>());
-        println!("Parsed button: {:?}", prize.parse::<Prize>());
+        assert_eq!("Button A: X+10, Y+10".parse::<Button>(), Ok(Button { dir: (10, 10), cost: 3 }));
+        assert_eq!("Button A:X+10,Y+10".parse::<Button>(), Ok(Button { dir: (10, 10), cost: 3 }));
+        assert!("ButtonA:X+10,Y+10".parse::<Button>().is_err());
+        assert_eq!("Prize: X=8400, Y=5400".parse::<Prize>(),Ok(Prize(8400, 5400)));
+        assert_eq!("Prize:X=8400,Y=5400".parse::<Prize>(),Ok(Prize(8400, 5400)));
+        assert!("X=8400, Y=5400".parse::<Prize>().is_err());
     }
 }
