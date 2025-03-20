@@ -14,7 +14,7 @@ pub fn dirvector_to_char(d:DirVector)-> char {
     Direction::from(d).into()
 }
 
-pub fn reverse_vector(d: DirVector) -> DirVector {
+pub fn reverse_dirvector(d: DirVector) -> DirVector {
     (-d.0,-d.1)
 }
 
@@ -84,6 +84,10 @@ impl Location {
 
     pub fn distance(&self, loc: &Location) -> (usize,usize) {
         (self.0.abs_diff(loc.0), self.1.abs_diff(loc.1))
+    }
+
+    pub fn is_origin(&self) -> bool {
+        self.0 == 0 && self.1 == 0
     }
 }
 

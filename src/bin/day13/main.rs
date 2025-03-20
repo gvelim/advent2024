@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use advent2024::location::{reverse_vector, DirVector, Location};
+use advent2024::location::{reverse_dirvector, DirVector, Location};
 use nom::{
     bytes::complete::{tag, take_till},
     character::{complete::alpha1, is_digit},
@@ -21,17 +21,32 @@ impl Crane {
     fn new(prize: Location) -> Self {
         Crane { loc: prize }
     }
-    fn back_a_step(&self, button: &Button) -> Option<Location> {
-        self.loc.move_relative(reverse_vector(button.dir))
+    fn back_a_step(&mut self, button: &Button) -> Option<Location> {
+        if let Some(loc) = self.loc.move_relative(reverse_dirvector(button.dir)) {
+            self.loc = loc;
+            Some(loc)
+        } else {
+            None
+        }
     }
     fn optimal_cost(&mut self, buttons: &[Button]) -> Option<u32> {
         // per button substract target
-        let button = buttons.iter().find(|button| self.back_a_step(button) == Some(Location(0, 0)));
-        
         // if new target is (0,0) then return Some(Button.cost)
         // if new target is less than 0 retun None; path has no solution
         // recurse Min( passing (a) new target, (b) button )
-        None
+        buttons.iter()
+            .filter_map(|button| {
+                if let Some(loc) = self.back_a_step(button) {
+                    if loc.is_origin() {
+                        Some(button.cost as u32)
+                    } else {
+                        self.optimal_cost(buttons)
+                    }
+                } else {
+                    None
+                }
+            })
+            .min()
     }
 }
 
@@ -82,6 +97,21 @@ fn parse_numbers_pair(input: &str) -> IResult<&str, (u32,u32), ()> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_crane_back_a_step() {
+        let mut crane = Crane::new(Location(10, 10));
+        let button = Button { dir: (2, 2), cost: 3 };
+        assert_eq!(crane.back_a_step(&button), Some(Location(8, 8)));
+        assert_eq!(crane.back_a_step(&button), Some(Location(6, 6)));
+        assert_eq!(crane.back_a_step(&button), Some(Location(4, 4)));
+        assert_eq!(crane.back_a_step(&button), Some(Location(2, 2)));
+        assert_eq!(crane.back_a_step(&button), Some(Location(0, 0)));
+        assert_eq!(crane.back_a_step(&button), None);
+        assert_eq!(Crane::new(Location(1,2)).back_a_step(&button), None);
+        assert_eq!(Crane::new(Location(2,1)).back_a_step(&button), None);
+        assert_eq!(Crane::new(Location(1,1)).back_a_step(&button), None);
+    }
 
     #[test]
     fn test_parse() {
