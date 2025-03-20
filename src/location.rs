@@ -14,6 +14,10 @@ pub fn dirvector_to_char(d:DirVector)-> char {
     Direction::from(d).into()
 }
 
+pub fn reverse_vector(d: DirVector) -> DirVector {
+    (-d.0,-d.1)
+}
+
 pub enum Direction {
   Left, Down, Right, Up
 }
