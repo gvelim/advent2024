@@ -1,60 +1,61 @@
-use std::str::FromStr;
+use std::{cell::RefCell, collections::HashMap, rc::Rc, str::FromStr};
 use advent2024::location::{reverse_dirvector, DirVector, Location};
 use nom::{
     bytes::complete::{tag, take_till},
     character::{complete::alpha1, is_digit},
     combinator::map,
     sequence::{preceded, separated_pair},
-    IResult
+    IResult,
 };
 
 fn main() {
     println!("Hello, world!");
 }
 
-#[derive(Debug)]
-struct Crane {
-    loc: Location
+struct ClawMachine {
+    buttons: Rc<[Button]>,
+    cache: RefCell<HashMap<(Location,Button), Option<u32>>>,
 }
 
-impl Crane {
-    fn new(prize: Location) -> Self {
-        Crane { loc: prize }
+impl ClawMachine {
+    fn new(buttons: &[Button]) -> Self {
+        ClawMachine { buttons: buttons.into(), cache: RefCell::new(HashMap::new()) }
     }
-    fn back_a_step(&mut self, button: &Button) -> Option<Location> {
-        if let Some(loc) = self.loc.move_relative(reverse_dirvector(button.dir)) {
-            self.loc = loc;
-            Some(loc)
-        } else {
-            None
+
+    fn optimal_cost(self, prize: Location) -> Option<u32> {
+        self._optimal_cost(prize, &self.buttons[0])
+    }
+
+    fn _optimal_cost(&self, prize: Location, button: &Button) -> Option<u32> {
+        if let Some(val) = self.cache.borrow().get(&(prize,*button)) {
+            return *val;
         }
-    }
-    fn optimal_cost(&mut self, buttons: &[Button]) -> Option<u32> {
-        // per button substract target
-        // if new target is (0,0) then return Some(Button.cost)
-        // if new target is less than 0 retun None; path has no solution
-        // recurse Min( passing (a) new target, (b) button )
-        buttons.iter()
-            .filter_map(|button| {
-                if let Some(loc) = self.back_a_step(button) {
-                    if loc.is_origin() {
-                        Some(button.cost as u32)
+        self.buttons
+            .iter()
+            .filter_map(|button| {;
+                let cost = if let Some(new_prize) = prize.move_relative(reverse_dirvector(button.dir)) {
+                    if new_prize.is_origin() {
+                        Some(0)
                     } else {
-                        self.optimal_cost(buttons)
+                        self._optimal_cost(new_prize, button)
                     }
+                    .map(|c| c + button.cost)
                 } else {
                     None
-                }
+                };
+                self.cache.borrow_mut().insert((prize,*button),cost);
+                cost
             })
             .min()
     }
 }
 
 
-#[derive(Debug, PartialEq)]
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Default)]
 struct Button {
     dir: DirVector,
-    cost: u8
+    cost: u32
 }
 
 impl FromStr for Button {
@@ -99,18 +100,16 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_crane_back_a_step() {
-        let mut crane = Crane::new(Location(10, 10));
-        let button = Button { dir: (2, 2), cost: 3 };
-        assert_eq!(crane.back_a_step(&button), Some(Location(8, 8)));
-        assert_eq!(crane.back_a_step(&button), Some(Location(6, 6)));
-        assert_eq!(crane.back_a_step(&button), Some(Location(4, 4)));
-        assert_eq!(crane.back_a_step(&button), Some(Location(2, 2)));
-        assert_eq!(crane.back_a_step(&button), Some(Location(0, 0)));
-        assert_eq!(crane.back_a_step(&button), None);
-        assert_eq!(Crane::new(Location(1,2)).back_a_step(&button), None);
-        assert_eq!(Crane::new(Location(2,1)).back_a_step(&button), None);
-        assert_eq!(Crane::new(Location(1,1)).back_a_step(&button), None);
+    fn test_optimal_cost() {
+        let buttons = [
+            "Button A: X+94, Y+34".parse::<Button>().unwrap(),
+            "Button B: X+22, Y+67".parse::<Button>().unwrap()
+        ];
+        let prize = parse_prize("Prize: X=8400, Y=5400").unwrap();
+        assert_eq!(
+            ClawMachine::new(&buttons).optimal_cost(prize),
+            Some(280)
+        );
     }
 
     #[test]
