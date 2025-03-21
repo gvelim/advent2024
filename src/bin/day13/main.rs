@@ -16,7 +16,7 @@ fn main() {
 
 struct ClawMachine {
     buttons: Rc<[Button]>,
-    cache: RefCell<HashMap<(Location,Button), Option<u32>>>,
+    cache: RefCell<HashMap<Location, Option<u32>>>,
 }
 
 impl ClawMachine {
@@ -24,28 +24,23 @@ impl ClawMachine {
         ClawMachine { buttons: buttons.into(), cache: RefCell::new(HashMap::new()) }
     }
 
-    fn optimal_cost(self, prize: Location) -> Option<u32> {
-        self._optimal_cost(prize, &self.buttons[0])
-    }
-
-    fn _optimal_cost(&self, prize: Location, button: &Button) -> Option<u32> {
-        if let Some(val) = self.cache.borrow().get(&(prize,*button)) {
+    fn optimal_cost(&self, prize: Location) -> Option<u32> {
+        if let Some(val) = self.cache.borrow().get(&prize) {
             return *val;
         }
+        if prize.is_origin() {
+            return Some(0)
+        }
+
         self.buttons
             .iter()
             .filter_map(|button| {
-                let cost = if let Some(new_prize) = prize.move_relative(reverse_dirvector(button.dir)) {
-                    if new_prize.is_origin() {
-                        Some(0)
-                    } else {
-                        self._optimal_cost(new_prize, button)
-                    }
-                    .map(|c| c + button.cost)
-                } else {
-                    None
-                };
-                self.cache.borrow_mut().insert((prize,*button),cost);
+                let cost = prize
+                    .move_relative( reverse_dirvector(button.dir) )
+                    .and_then(|new_prize|
+                        self.optimal_cost(new_prize).map(|c| c + button.cost)
+                    );
+                self.cache.borrow_mut().insert(prize,cost);
                 cost
             })
             .min()
