@@ -9,7 +9,9 @@ use nom::{
 };
 
 fn main() {
-    println!("Hello, world!");
+    let input = std::fs::read_to_string("sample.txt").expect("Failed to read input file");
+
+
 }
 
 struct ClawMachine {
@@ -32,7 +34,7 @@ impl ClawMachine {
         }
         self.buttons
             .iter()
-            .filter_map(|button| {;
+            .filter_map(|button| {
                 let cost = if let Some(new_prize) = prize.move_relative(reverse_dirvector(button.dir)) {
                     if new_prize.is_origin() {
                         Some(0)
@@ -49,7 +51,6 @@ impl ClawMachine {
             .min()
     }
 }
-
 
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Default)]
