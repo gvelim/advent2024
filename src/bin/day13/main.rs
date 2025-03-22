@@ -9,17 +9,18 @@ fn main() {
 
     let runs = input.split("\n\n")
         .map(|run| parse_prize_clawmachine(run))
-        .map(|res|
-            res.map(|(_,res)| res)
-        )
+        .map(|res| res.map(|(_,res)| res))
         .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| panic!("{:?}", e) )
         .unwrap();
 
     runs.iter()
         .for_each(|run| {
             let (prize, machine) = run;
             print!("{:?} -> ", machine);
-            print!("{:?} = ", prize);
-            println!("{:?}", machine.optimal_cost(*prize));
+            println!("{:?} = ", prize);
+            println!("Optimal Cost: {:?}",machine.optimal_cost(*prize));
+            machine.paths.borrow().iter().for_each(|path| println!("Paths: {:?}", path));
+            println!();
         });
 }

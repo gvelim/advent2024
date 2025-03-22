@@ -5,11 +5,18 @@ use advent2024::location::{reverse_dirvector, DirVector, Location};
 pub(crate) struct ClawMachine {
     buttons: Rc<[Button]>,
     cache: RefCell<HashMap<Location, Option<u32>>>,
+    trail: RefCell<HashMap<u32, u32>>,
+    pub(crate) paths: RefCell<Vec<Vec<(u32,u32)>>>,
 }
 
 impl ClawMachine {
     pub(crate) fn new(buttons: &[Button]) -> Self {
-        ClawMachine { buttons: buttons.into(), cache: RefCell::new(HashMap::new()) }
+        ClawMachine {
+            buttons: buttons.into(),
+            cache: RefCell::new(HashMap::new()),
+            trail: RefCell::new(HashMap::default()),
+            paths: RefCell::new(Vec::new()),
+        }
     }
 
     pub(crate) fn optimal_cost(&self, prize: Location) -> Option<u32> {
@@ -17,6 +24,12 @@ impl ClawMachine {
             return *val;
         }
         if prize.is_origin() {
+            self.paths.borrow_mut().push(
+                self.trail.borrow()
+                    .iter()
+                    .map(|(x,y)| (*x,*y))
+                    .collect::<Vec<_>>()
+            );
             return Some(0)
         }
 
@@ -25,9 +38,12 @@ impl ClawMachine {
             .filter_map(|button| {
                 let cost = prize
                     .move_relative( reverse_dirvector(button.dir) )
-                    .and_then(|new_prize|
-                        self.optimal_cost(new_prize).map(|c| c + button.cost)
-                    );
+                    .and_then(|new_prize| {
+                        self.trail.borrow_mut().entry(button.cost).and_modify(|c| *c += 1).or_insert(1);
+                        let cost = self.optimal_cost(new_prize).map(|c| c + button.cost);
+                        self.trail.borrow_mut().entry(button.cost).and_modify(|c| *c -= 1);
+                        cost
+                    });
                 self.cache.borrow_mut().insert(prize,cost);
                 cost
             })
