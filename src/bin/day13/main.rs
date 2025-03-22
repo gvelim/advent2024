@@ -5,7 +5,7 @@ use parser::parse_prize_clawmachine;
 
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day13/sample.txt").expect("Failed to read input file");
+    let input = std::fs::read_to_string("src/bin/day13/input.txt").expect("Failed to read input file");
 
     let runs = input.split("\n\n")
         .map(|run| parse_prize_clawmachine(run))
@@ -14,13 +14,21 @@ fn main() {
         .map_err(|e| panic!("{:?}", e) )
         .unwrap();
 
-    runs.iter()
-        .for_each(|run| {
+    let sum = runs.iter()
+        .filter_map(|run| {
             let (prize, machine) = run;
             print!("{:?} -> ", machine);
             println!("{:?} = ", prize);
-            println!("Optimal Cost: {:?}",machine.optimal_cost(*prize));
-            machine.paths.borrow().iter().for_each(|path| println!("Paths: {:?}", path));
-            println!();
-        });
+            let res = machine.optimal_cost(*prize);
+            if let Some((cost,paths)) = res.clone() {
+                println!("Optimal Cost: {:?}", cost);
+                println!("Optimal Path: {:?}", paths);
+                println!()
+            }
+            res
+        })
+        .map(|(cost,_)| cost)
+        .sum::<u32>();
+
+    println!("Total Sum: {}", sum);
 }
