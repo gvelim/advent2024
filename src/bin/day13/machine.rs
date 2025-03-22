@@ -28,7 +28,7 @@ impl ClawMachine {
             })
     }
 
-    pub(crate) fn _optimal_cost(&self, prize: Location) -> Option<u32> {
+    fn _optimal_cost(&self, prize: Location) -> Option<u32> {
         if let Some(val) = self.cache.borrow().get(&prize) {
             return *val;
         }
@@ -66,7 +66,6 @@ impl Debug for ClawMachine {
         f.debug_list()
             .entries( self.buttons.iter() )
             .finish()?;
-        writeln!(f)?;
         Ok(())
     }
 }
