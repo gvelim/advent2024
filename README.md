@@ -36,3 +36,4 @@ Project Root
 * [Day 10: Hoof It](src/bin/day10/README.md)
 * [Day 11: Plutonian Pebbles](src/bin/day11/README.md)
 * [Day 12: Garden Groups](src/bin/day12/README.md)
+* [Day 13: Claw Contraption](src/bin/day13/README.md)
