@@ -1,11 +1,11 @@
 use advent2024::location::Location;
 use nom::{
-    bytes::complete::{tag, take_till}, character::{complete::alpha1, is_digit, streaming::crlf},
+    bytes::complete::{tag, take_till}, character::{complete::alpha1, is_digit},
     combinator::map, sequence::{preceded, separated_pair, terminated},
     IResult
 };
 
-use crate::{Button, ClawMachine};
+use crate::machine::{Button, ClawMachine};
 
 pub(super) fn parse_prize_clawmachine(input: &str) -> IResult<&str, (Location, ClawMachine)> {
 
@@ -33,7 +33,7 @@ pub(super) fn parse_button(input: &str) -> IResult<&str, Button, nom::error::Err
             tag(":"),
             parse_numbers_pair
         ),
-        |(cost, (dx,dy))| Button { dir: (dx as isize, dy as isize), cost}
+        |(cost, (x,y))| Button::new((x as isize, y as isize), cost)
     )(input)
 }
 
@@ -60,8 +60,8 @@ mod test {
 
     #[test]
     fn test_parse_button() {
-        assert_eq!("Button A: X+10, Y+10".parse::<Button>(), Ok(Button { dir: (10, 10), cost: 3 }));
-        assert_eq!("Button A:X+10,Y+10".parse::<Button>(), Ok(Button { dir: (10, 10), cost: 3 }));
+        assert_eq!("Button A: X+10, Y+10".parse::<Button>(), Ok(Button::new((10, 10),3)));
+        assert_eq!("Button A:X+10,Y+10".parse::<Button>(), Ok(Button::new((10, 10),3)));
         assert!("ButtonA:X+10,Y+10".parse::<Button>().is_err());
         assert_eq!(parse_prize("Prize: X=8400, Y=5400"),Ok(("",Location(8400, 5400))));
         assert_eq!(parse_prize("Prize:X=8400,Y=5400"),Ok(("",Location(8400, 5400))));
