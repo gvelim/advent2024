@@ -7,6 +7,10 @@ use nom::{
 
 use crate::machine::{Button, ClawMachine};
 
+// expects three lines in the form of
+// Button A: X+94, Y+34
+// Button B: X+22, Y+67
+// Prize: X=8400, Y=5400
 pub(super) fn parse_prize_clawmachine(input: &str) -> IResult<&str, (Location, ClawMachine)> {
 
     let (input, button_a) = terminated(parse_button, tag("\n"))(input)?;
@@ -16,6 +20,7 @@ pub(super) fn parse_prize_clawmachine(input: &str) -> IResult<&str, (Location, C
     Ok((input, (prize, ClawMachine::new(&[button_a, button_b]))))
 }
 
+// expects "Prize: X=8400, Y=5400"
 pub(super) fn parse_prize(input: &str) -> IResult<&str, Location> {
     map(
         preceded(tag("Prize:"), parse_numbers_pair),
@@ -23,6 +28,7 @@ pub(super) fn parse_prize(input: &str) -> IResult<&str, Location> {
     )(input)
 }
 
+// expects "Button A: X+94, Y+34"
 pub(super) fn parse_button(input: &str) -> IResult<&str, Button, nom::error::Error<&str>> {
     map(
         separated_pair(
@@ -37,6 +43,7 @@ pub(super) fn parse_button(input: &str) -> IResult<&str, Button, nom::error::Err
     )(input)
 }
 
+// expects " X+94, Y+34"
 pub(super) fn parse_numbers_pair(input: &str) -> IResult<&str, (u32,u32)> {
     separated_pair(
         preceded(take_till(|c| is_digit(c as u8)), nom::character::complete::u32),

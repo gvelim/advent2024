@@ -18,12 +18,13 @@ fn main() {
         .filter_map(|run| {
             let (prize, machine) = run;
             print!("{:?} -> ", machine);
-            println!("{:?} = ", prize);
+            print!("{:?} = ", prize);
             let res = machine.optimal_cost(*prize);
             if let Some((cost,paths)) = res.clone() {
-                println!("Optimal Cost: {:?}", cost);
-                println!("Optimal Path: {:?}", paths);
-                println!()
+                println!("{cost}");
+                println!("{:->5}Optimal Path: {:?}", ' ',paths);
+            } else {
+                println!("No Solution");
             }
             res
         })
