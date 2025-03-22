@@ -1,7 +1,9 @@
 use advent2024::location::Location;
 use nom::{
-    bytes::complete::{tag, take_till}, character::{complete::alpha1, is_digit},
-    combinator::map, sequence::{preceded, separated_pair, terminated},
+    bytes::complete::{tag, take_till},
+    character::{complete::alpha1, is_digit},
+    combinator::map,
+    sequence::{preceded, separated_pair, terminated},
     IResult
 };
 
@@ -29,7 +31,7 @@ pub(super) fn parse_prize(input: &str) -> IResult<&str, Location> {
 }
 
 // expects "Button A: X+94, Y+34"
-pub(super) fn parse_button(input: &str) -> IResult<&str, Button, nom::error::Error<&str>> {
+pub(super) fn parse_button(input: &str) -> IResult<&str, Button> {
     map(
         separated_pair(
             map(

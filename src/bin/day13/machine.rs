@@ -1,13 +1,14 @@
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc, str::FromStr};
 use advent2024::location::{reverse_dirvector, DirVector, Location};
+use nom::error::Error;
 
 type ButtonCombinations = Vec<(u32,u32)>;
 
 pub(crate) struct ClawMachine {
     buttons: Rc<[Button]>,
     cache: RefCell<HashMap<Location, Option<u32>>>,
-    trail: RefCell<HashMap<u32, u32>>,
-    paths: RefCell<Vec<ButtonCombinations>>,
+    click_trail: RefCell<HashMap<u32, u32>>,
+    combos: RefCell<Vec<ButtonCombinations>>,
 }
 
 impl ClawMachine {
@@ -15,8 +16,8 @@ impl ClawMachine {
         ClawMachine {
             buttons: buttons.into(),
             cache: RefCell::new(HashMap::new()),
-            trail: RefCell::new(HashMap::default()),
-            paths: RefCell::new(Vec::new()),
+            click_trail: RefCell::new(HashMap::default()),
+            combos: RefCell::new(Vec::new()),
         }
     }
 
@@ -24,7 +25,7 @@ impl ClawMachine {
     pub(crate) fn optimal_cost(&self, prize: Location) -> Option<(u32, Vec<ButtonCombinations> )> {
         self._optimal_cost(prize)
             .map(|c| {
-                let paths = self.paths.borrow().clone();
+                let paths = self.combos.borrow().clone();
                 (c, paths)
             })
     }
@@ -37,13 +38,16 @@ impl ClawMachine {
         // have we hit the (0,0) prize ?
         if prize.is_origin() {
             // store the button press combinations up to this point
-            self.paths.borrow_mut().push(
-                // extract from active trail the (button cost, counter) tuples
-                self.trail.borrow()
-                    .iter()
-                    .map(|(x,y)| (*x,*y))
-                    .collect::<Vec<_>>()
-            );
+            self.combos
+                .borrow_mut()
+                .push(
+                    // extract from active trail the (button cost, counter) tuples
+                    self.click_trail
+                        .borrow()
+                        .iter()
+                        .map(|(x,y)| (*x,*y))
+                        .collect::<Vec<_>>()
+                );
             // return cost 0 as the initial condition for prize (0,0)
             return Some(0)
         }
@@ -58,14 +62,14 @@ impl ClawMachine {
                     .move_relative( reverse_dirvector(button.dir) )
                     .and_then(|origin_prize| {
                         // increment button press count by one; use button cost as key
-                        self.trail.borrow_mut().entry(button.cost).and_modify(|c| *c += 1).or_insert(1);
+                        self.click_trail.borrow_mut().entry(button.cost).and_modify(|c| *c += 1).or_insert(1);
 
                         // as long as we haven't crossed zero of either axis
                         // cost for current prize = cost for origin prize + button cost
                         let cost = self._optimal_cost(origin_prize).map(|c| c + button.cost);
 
                         // depress button; reduce counter by one
-                        self.trail.borrow_mut().entry(button.cost).and_modify(|c| *c -= 1);
+                        self.click_trail.borrow_mut().entry(button.cost).and_modify(|c| *c -= 1);
                         cost
                     });
 
@@ -107,14 +111,14 @@ impl Debug for Button {
 }
 
 impl FromStr for Button {
-    type Err = ();
+    type Err = nom::Err<Error<String>>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         use crate::parser::parse_button;
 
         match parse_button(input) {
             Ok((_, button)) => Ok(button),
-            Err(_) => Err(())
+            Err(err) => Err(err.to_owned())
         }
     }
 }

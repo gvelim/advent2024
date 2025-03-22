@@ -15,20 +15,17 @@ fn main() {
         .unwrap();
 
     let sum = runs.iter()
-        .filter_map(|run| {
-            let (prize, machine) = run;
-            print!("{:?} -> ", machine);
-            print!("{:?} = ", prize);
-            let res = machine.optimal_cost(*prize);
-            if let Some((cost,paths)) = res.clone() {
+        .inspect(|(prize, machine)| print!("{:?} -> {:?} = ", machine, prize))
+        .filter_map(|(prize, machine)| {
+            if let Some((cost, paths)) = machine.optimal_cost(*prize) {
                 println!("{cost}");
                 println!("{:->5}Optimal Path: {:?}", ' ',paths);
+                Some(cost)
             } else {
                 println!("No Solution");
+                None
             }
-            res
         })
-        .map(|(cost,_)| cost)
         .sum::<u32>();
 
     println!("Total Sum: {}", sum);
