@@ -38,7 +38,7 @@ impl Blink for Stone {
         if self == 0 {
             BlinkResult::One(1)
         } else if self.has_even_digits() {
-            let m = (10 as Stone).pow((self.ilog10() + 1) / 2);
+            let m = (10 as Stone).pow(self.ilog10().div_ceil(2));
             BlinkResult::Two(self / m, self % m)
         } else {
             BlinkResult::One(self * 2024)
