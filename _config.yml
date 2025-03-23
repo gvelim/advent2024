@@ -1,8 +1,0 @@
-baseurl: "/" # the subpath of your site, e.g., /blog
-url: "https://gvelim.github.io"
-permalink: /:path/:basename/
-
-# Build settings
-plugins:
-  - jekyll-feed
-  - jekyll-redirect-from
