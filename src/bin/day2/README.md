@@ -1,3 +1,6 @@
+---
+permalink: /src/bin/day2/
+---
 # Understanding a Validation Algorithm: Documentation
 
 ## Introduction
