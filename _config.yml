@@ -1,3 +1,5 @@
+baseurl: "/advent2024" # the subpath of your site, e.g., /blog
+url: "https://gvelim.github.io"
 permalink: /:path/:basename/
 
 # Build settings
