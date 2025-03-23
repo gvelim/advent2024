@@ -1,12 +1,4 @@
-title: Your Site Title
-description: A description of your site
-baseurl: "" # the subpath of your site, e.g., /blog
-url: "https://yourusername.github.io" # the base hostname & protocol for your site
 permalink: /:path/:basename/
-
-# Other configurations
-markdown: kramdown
-theme: minima
 
 # Build settings
 plugins:
