@@ -14,55 +14,55 @@ This repository aims to:
 
 Below you'll find an index to all the documented problems in this repository:
 
-### 1. [Day 1: Historian Hysteria](advent2024/src/bin/day1/README.md)
+### 1. [Day 1: Historian Hysteria](src/bin/day1/README.md)
 - Processing pairs of numbers with absolute differences and frequencies
 - Demonstrates basic file I/O, vector manipulation, zipping iterators, and hashmap usage
 
-### 2. [Day 2: Red-Nosed Reports](advent2024/src/bin/day2/README.md)
+### 2. [Day 2: Red-Nosed Reports](src/bin/day2/README.md)
 - Validating numeric sequences according to direction and difference rules
 - Explores validation algorithms and modification analysis
 
-### 3. [Day 3: Mull It Over](advent2024/src/bin/day3/README.md)
+### 3. [Day 3: Mull It Over](src/bin/day3/README.md)
 - Building a simple virtual CPU to process instructions
 - Demonstrates parser combinators with Nom and state machine design
 
-### 4. [Day 4: Ceres Search](advent2024/src/bin/day4/README.md)
+### 4. [Day 4: Ceres Search](src/bin/day4/README.md)
 - Searching a 2D grid for specific word patterns in multiple directions
 - Illustrates spatial algorithms and functional programming
 
-### 5. [Day 5: Print Queue](advent2024/src/bin/day5/README.md)
+### 5. [Day 5: Print Queue](src/bin/day5/README.md)
 - Verifying and fixing ordered lists based on specific ordering rules
 - Explores graph-based ordering and topological sorting
 
-### 6. [Day 6: Guard Gallivant](advent2024/src/bin/day6/README.md)
+### 6. [Day 6: Guard Gallivant](src/bin/day6/README.md)
 - Simulating a robot moving through a lab environment
 - Demonstrates state management and path analysis
 
-### 7. [Day 7: Bridge Repair](advent2024/src/bin/day7/README.md)
+### 7. [Day 7: Bridge Repair](src/bin/day7/README.md)
 - Solving mathematical equations with different operations
 - Explores recursive backtracking and dynamic programming
 
-### 8. [Day 8: Resonant Collinearity](advent2024/src/bin/day8/README.md)
+### 8. [Day 8: Resonant Collinearity](src/bin/day8/README.md)
 - Modeling radio antennas and interference patterns
 - Demonstrates spatial computing and advanced iterator usage
 
-### 9. [Day 9: Disk Fragmenter](advent2024/src/bin/day9/README.md)
+### 9. [Day 9: Disk Fragmenter](src/bin/day9/README.md)
 - Simulating disk space allocation and optimization
 - Explores run-length encoding and file system operations
 
-### 10. [Day 10: Hoof It](advent2024/src/bin/day10/README.md)
+### 10. [Day 10: Hoof It](src/bin/day10/README.md)
 - Finding paths through a height map with specific constraints
 - Demonstrates depth-first search and traversal algorithms
 
-### 11. [Day 11: Plutonian Pebbles](advent2024/src/bin/day11/README.md)
+### 11. [Day 11: Plutonian Pebbles](src/bin/day11/README.md)
 - Modeling stones that "blink" and multiply according to rules
 - Demonstrates recursion with memoization and custom traits
 
-### 12. [Day 12: Garden Groups](advent2024/src/bin/day12/README.md)
+### 12. [Day 12: Garden Groups](src/bin/day12/README.md)
 - Identifying and analyzing plant regions in a garden layout
 - Explores connected component analysis and spatial properties
 
-### 13. [Day 13: Claw Contraption](advent2024/src/bin/day13/README.md)
+### 13. [Day 13: Claw Contraption](src/bin/day13/README.md)
 - Finding the minimum-cost path to reach a target location
 - Demonstrates dynamic programming and path finding algorithms
 
