@@ -1,6 +1,3 @@
----
-permalink: /src/bin/day3/
----
 # Day 3: Processing Instructions with a Simple CPU
 
 This documentation explains a solution for Day 3 of Advent of Code 2024, which involves parsing and processing a program with special instructions.

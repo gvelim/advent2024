@@ -1,6 +1,3 @@
----
-permalink: /src/bin/day1/
----
 # Day 1 Challenge - README
 
 ## Overview
