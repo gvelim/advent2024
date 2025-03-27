@@ -14,9 +14,9 @@ use crate::machine::{Button, ClawMachine};
 // Button B: X+22, Y+67
 // Prize: X=8400, Y=5400
 pub(super) fn parse_prize_clawmachine(input: &str) -> IResult<&str, (Location, ClawMachine)> {
-
-    let (input, button_a) = terminated(parse_button, tag("\n"))(input)?;
-    let (input, button_b) = terminated(parse_button, tag("\n"))(input)?;
+    let mut read_button = terminated(parse_button, tag("\n"));
+    let (input, button_a) = read_button(input)?;
+    let (input, button_b) = read_button(input)?;
     let (input, prize) = parse_prize(input)?;
 
     Ok((input, (prize, ClawMachine::new(&[button_a, button_b]))))
