@@ -34,6 +34,8 @@ impl ClawMachine {
         let b_count = (a_x*p_y - a_y*p_x)/(a_x*b_y - a_y*b_x);
         let a_count = (p_x - b_count*b_x)/a_x;
 
+        // since the equation isn't polynomial there is only a single solution
+        // hence the cost will be optimal always
         (a_count*a_x + b_count*b_x == p_x && a_count*a_y + b_count*b_y == p_y)
             .then_some({
                 let (a_count, b_count) = (a_count as u32, b_count as u32);
@@ -43,7 +45,7 @@ impl ClawMachine {
     }
 
     // return the optimal cost and the button press combinations
-    pub(crate) fn optimal_cost(&self, prize: Location) -> Option<(u32, Vec<ButtonCombinations> )> {
+    pub(crate) fn optimal_cost(&self, prize: Location) -> Option<(u32, Vec<ButtonCombinations>)> {
         self._optimal_cost(prize)
             .map(|c| {
                 let paths = self.combos.borrow().clone();
