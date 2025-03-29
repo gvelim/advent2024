@@ -21,6 +21,27 @@ impl ClawMachine {
         }
     }
 
+    pub(crate) fn calculate_cost(&self, prize: Location) -> Option<u32>{
+        let [a,b] = self.buttons[..] else { panic!("Ops")};
+        let (ax,ay) = a.dir;
+        let (bx,by) = b.dir;
+        let (px, py) = (prize.0 as isize, prize.1 as isize);
+
+        // ay*a + by*b = py =>
+        // ay*(px - b*bx)/ax + b*by = py =>
+        // ay*(px - b*bx) + b*ax*by = ax*py =>
+        // ay*px - b*ay*bx + b*ax*by = ax*py =>
+        // ay*px + b(ax*by - ay*bx) = ax*py =>
+        // b(ax*by - ay*bx) = (ax*py - ay*px) =>
+        // b = (ax*py - ay*px)/(ax*by - ay*bx)
+        let bn = (ax*py - ay*px)/(ax*by - ay*bx);
+        // ax*a + bx*b = px => a = (px - b*bx)/ax
+        let an = (px - bn*bx)/ax;
+        println!("{:?}",(an,bn));
+
+        Some(an as u32 * a.cost + bn as u32 *b.cost)
+    }
+
     // return the optimal cost and the button press combinations
     pub(crate) fn optimal_cost(&self, prize: Location) -> Option<(u32, Vec<ButtonCombinations> )> {
         self._optimal_cost(prize)
@@ -138,6 +159,10 @@ mod test {
         assert_eq!(
             clawmachine.optimal_cost(prize).unwrap().0,
             280
+        );
+        assert_eq!(
+            clawmachine.calculate_cost(prize),
+            Some(280)
         );
     }
 }
