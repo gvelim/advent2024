@@ -21,25 +21,25 @@ impl ClawMachine {
         }
     }
 
-    pub(crate) fn calculate_cost(&self, prize: Location) -> Option<u32>{
-        let [a,b] = self.buttons[..] else { panic!("Ops")};
-        let (ax,ay) = a.dir;
-        let (bx,by) = b.dir;
-        let (px, py) = (prize.0 as isize, prize.1 as isize);
+    pub(crate) fn _calculate_cost(&self, prize: Location) -> Option<(u32, Vec<ButtonCombinations>)>{
+        let [a, b] = self.buttons[..] else { panic!("Ops! argument with more than 2 buttons ?")};
+        let (a_x,a_y) = a.dir;
+        let (b_x,b_y) = b.dir;
+        let (p_x, p_y) = (prize.0 as isize, prize.1 as isize);
 
-        // ay*a + by*b = py =>
-        // ay*(px - b*bx)/ax + b*by = py =>
-        // ay*(px - b*bx) + b*ax*by = ax*py =>
-        // ay*px - b*ay*bx + b*ax*by = ax*py =>
-        // ay*px + b(ax*by - ay*bx) = ax*py =>
-        // b(ax*by - ay*bx) = (ax*py - ay*px) =>
-        // b = (ax*py - ay*px)/(ax*by - ay*bx)
-        let bn = (ax*py - ay*px)/(ax*by - ay*bx);
-        // ax*a + bx*b = px => a = (px - b*bx)/ax
-        let an = (px - bn*bx)/ax;
-        println!("{:?}",(an,bn));
+        // 2 equations with 2 unknowns
+        // Ax*An + Bx*Bn = Px
+        // Ay*An + By*Bn = Py
+        // where An and Bn are the unknown number of button clicks to reach the goal
+        let b_count = (a_x*p_y - a_y*p_x)/(a_x*b_y - a_y*b_x);
+        let a_count = (p_x - b_count*b_x)/a_x;
 
-        Some(an as u32 * a.cost + bn as u32 *b.cost)
+        (a_count*a_x + b_count*b_x == p_x && a_count*a_y + b_count*b_y == p_y)
+            .then_some({
+                let (a_count, b_count) = (a_count as u32, b_count as u32);
+                let cost = a_count* a.cost + b_count*b.cost;
+                (cost, vec![vec![(a_count,b_count)]])
+            })
     }
 
     // return the optimal cost and the button press combinations
@@ -161,8 +161,8 @@ mod test {
             280
         );
         assert_eq!(
-            clawmachine.calculate_cost(prize),
-            Some(280)
+            clawmachine._calculate_cost(prize).unwrap().0,
+            280
         );
     }
 }
