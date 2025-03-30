@@ -2,6 +2,17 @@
 
 This document explains the design and implementation of a program that solves the "claw machine" optimization problem using dynamic programming. The challenge involves finding the minimum-cost sequence of button presses to reach a target prize location.
 
+*Note*: We ignore the mathematical approach to solve this puzzle, by expressing it in the form of
+- `Ax * Pa + Bx * Pb = PRx`
+- `Ay * Pa + By * Pb = PRy`
+
+and given
+- Button A = `(Ax, Ay)`
+- Button B = `(Bx, By)`
+- Prize = `(PRx, PRy)`
+- `Pa` = number of clicks, button A
+- `Pb` = number of clicks, button B
+
 ## Table of Contents
 1. [Problem Understanding](#problem-understanding)
 2. [Solution Intuition](#solution-intuition)
