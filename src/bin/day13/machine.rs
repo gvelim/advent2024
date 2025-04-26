@@ -75,33 +75,38 @@ impl ClawMachine {
             return Some(0)
         }
 
-        // for each button
-        self.buttons
+        // Calculate the minimum cost by exploring all button options first
+        let min_cost = self.buttons
             .iter()
             .filter_map(|button| {
-                let cost = prize
-                    // calculate origin of current prize given the button press
-                    // prize - button press = origin_prize
+                // calculate origin of current prize given the button press
+                // prize - button press = origin_prize
+                prize
                     .move_relative( reverse_dirvector(button.dir) )
                     .and_then(|origin_prize| {
                         // increment button press count by one; use button cost as key
                         self.click_trail.borrow_mut().entry(button.cost).and_modify(|c| *c += 1).or_insert(1);
 
-                        // as long as we haven't crossed zero of either axis
+                        // Recursively find the cost from the origin_prize
                         // cost for current prize = cost for origin prize + button cost
                         let cost = self._optimal_cost(origin_prize).map(|c| c + button.cost);
 
-                        // depress button; reduce counter by one
+                        // depress button; reduce counter by one (backtrack)
                         self.click_trail.borrow_mut().entry(button.cost).and_modify(|c| *c -= 1);
-                        cost
-                    });
 
-                // store in the result cache the cost calculated at current prize position
-                self.cache.borrow_mut().insert(prize,cost);
-                cost
+                        // Return the calculated cost for this path (if any)
+                        cost
+                    })
             })
-            // capture the minimum cost from all button presses at current prize position
-            .min()
+            // capture the minimum cost from all possible preceding steps (button presses)
+            .min();
+
+        // Cache the calculated minimum cost for the current prize position
+        // This happens *after* the minimum is found across all paths
+        self.cache.borrow_mut().insert(prize, min_cost);
+
+        // Return the minimum cost found
+        min_cost
     }
 }
 
