@@ -89,7 +89,7 @@ impl Debug for Plot {
                     None => write!(f, "{}", "⬝".on_truecolor(16,16,128))?,
                 }
             }
-            writeln!(f, " = {:?}", line_segments)?;
+            writeln!(f, " = {line_segments:?}" )?;
         }
         Ok(())
     }

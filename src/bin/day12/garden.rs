@@ -154,14 +154,15 @@ impl Debug for Garden {
             .flat_map(|plot|  plot.iter())
             .collect::<BTreeSet<_>>();
 
+        let mut thread = rng();
         let color_map = ('A'..='Z')
             .map(|plant|
                 (
                     plant,
                     (
-                        rng().random_range(8..=0x7F),
-                        rng().random_range(8..=0x7F),
-                        rng().random_range(8..=0x7F)
+                        thread.random_range(8..=0x7F),
+                        thread.random_range(8..=0x7F),
+                        thread.random_range(8..=0x7F)
                     )
                 )
             )
@@ -178,7 +179,7 @@ impl Debug for Garden {
                         let plant = repeat_n(seg.plant(), seg.len() as usize)
                             .collect::<String>()
                             .on_truecolor(colour.0, colour.1, colour.2);
-                        write!(f, "{}", plant).ok();
+                        write!(f, "{plant}").ok();
                     });
                 writeln!(f).ok();
             });
@@ -188,7 +189,7 @@ impl Debug for Garden {
 
 #[derive(Default)]
 struct LastGardenScanLine {
-    segments: Vec::<(PlotSegment, usize, bool)>,
+    segments: Vec<(PlotSegment, usize, bool)>,
 }
 
 impl Index<usize> for LastGardenScanLine {

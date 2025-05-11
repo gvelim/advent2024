@@ -85,7 +85,7 @@ impl<T> Debug for Field<T> where T: Debug + Display {
         write!(f,"W:{},H{}",self.width(),self.height())?;
         for c in self.cells.iter() {
             writeln!(f)?;
-            for c in c.iter() { write!(f,"{:2}", c)? };
+            for c in c.iter() { write!(f,"{c:2}")? };
         }
         writeln!(f)?;
         Ok(())

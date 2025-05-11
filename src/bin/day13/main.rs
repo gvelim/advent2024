@@ -11,11 +11,11 @@ fn main() {
         .map(|run| parse_prize_clawmachine(run))
         .map(|res| res.map(|(_,res)| res))
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| panic!("{:?}", e) )
+        .map_err(|e| panic!("{e:?}") )
         .unwrap();
 
     let sum = runs.iter()
-        .inspect(|(prize, machine)| print!("{:?} -> {:?} = ", machine, prize))
+        .inspect(|(prize, machine)| print!("{machine:?} -> {prize:?} = "))
         .filter_map(|(prize, machine)| {
             if let Some((cost, paths)) = machine.optimal_cost(*prize) {
                 println!("{cost}");
@@ -28,5 +28,5 @@ fn main() {
         })
         .sum::<u32>();
 
-    println!("Total Sum: {}", sum);
+    println!("Total Sum: {sum}");
 }

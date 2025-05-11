@@ -18,7 +18,7 @@ impl Equation {
     }
 
     fn solve(total: u64, coeff: &[u64],cop: bool) -> Option<u64> {
-        fn ct(a:u64, b:u64) -> u64 { format!("{}{}",a,b).parse::<u64>().unwrap() }
+        fn ct(a:u64, b:u64) -> u64 { format!("{a}{b}").parse::<u64>().unwrap() }
 
         let idx = coeff.len() - 1;
 

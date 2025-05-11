@@ -58,7 +58,7 @@ fn test_find_guard() -> Result<(),()> {
     ];
     for (l, out) in dt.into_iter() {
         let lab = l.parse::<Lab>()?;
-        assert_eq!(find_guard(&lab, &['^','>','v','<']), out, "{:#?}, {:#?}",lab, out);
+        assert_eq!(find_guard(&lab, &['^','>','v','<']), out, "{lab:#?}, {out:#?}");
     }
     Ok(())
 }

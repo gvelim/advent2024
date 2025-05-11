@@ -11,7 +11,7 @@ fn main() {
 
     let total = garden
         .iter()
-        .inspect(|(_, plot)| println!("{:?}", plot))
+        .inspect(|(_, plot)| println!("{plot:?}"))
         .map(|(_,v)|
             (v.area(), v.perimeter())
         )

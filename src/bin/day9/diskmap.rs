@@ -138,13 +138,13 @@ mod test {
     #[test]
     fn test_checksum() {
         let dm = "2333133121414131402".parse::<DiskMap>().unwrap();
-        println!("{:?}",dm);
+        println!("{dm:?}");
         assert_eq!(dm.checksum(), 4116);
     }
     #[test]
     fn test_diskmap_parse() {
         let dm = "2333133121414131402".parse::<DiskMap>().unwrap();
-        println!("{:?}", dm);
+        println!("{dm:?}");
         println!("Space: {:?}", dm.spaces().collect::<Vec<_>>());
         println!("File: {:?}", dm.files().collect::<Vec<_>>());
     }
@@ -152,7 +152,7 @@ mod test {
     #[test]
     fn test_diskmap_compress() {
         let mut dm = "2333133121414131402".parse::<DiskMap>().unwrap();
-        println!("{:?}", dm);
+        println!("{dm:?}");
         println!("Space: {:?}", dm.compress());
         println!("Checksum: {:?}", dm.checksum());
         assert_eq!(1928,dm.checksum());
@@ -161,38 +161,38 @@ mod test {
     #[test]
     fn test_diskmap_move_file() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
-        println!("\n{:?}",dm);
+        println!("\n{dm:?}");
         assert_eq!(dm.move_file(4,1).0, vec![(2, 0), (0,-1), (1, 2), (2, -1), (3, 1), (6, -1), (3, 3)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
         assert_eq!(dm.move_file(6,3).0, vec![(2, 0), (0,-1), (1, 2), (0,-1),(2, 3),(0,-1),(3, 1), (6, -1), (1, 3)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
         assert_eq!(dm.move_file(8,7).0, vec![(2, 0), (0,-1), (1, 2), (0,-1),(2, 3),(0,-1),(3, 1), (0,-1),(1,3)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
     }
 
     #[test]
     fn test_diskmap_remove_file() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
-        println!("\n{:?}",dm);
+        println!("\n{dm:?}");
         assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1), (6, -1), (3, 3)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
         assert_eq!(dm.remove_file(4).0, vec![(2, 0), (3, -1), (3, 1)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
         assert_eq!(dm.remove_file(1).0, vec![(2, 0), (3, -1), (3, 1)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
         assert_eq!(dm.remove_file(0).0, vec![(3, 1)]);
-        println!("{:?}", dm);
+        println!("{dm:?}");
     }
 
     #[test]
     fn test_diskmap_insert_file() {
         let mut dm = "2333123".parse::<DiskMap>().unwrap();
-        println!("\n{:?}", dm );
+        println!("\n{dm:?}");
         assert_eq!(dm.insert_file(1, (2, 4)).0, vec![(2, 0), (0, -1), (2, 4), (1, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
         assert_eq!(dm.insert_file(3, (1, 5)).0, vec![(2, 0), (0, -1), (2, 4), (0, -1), (1, 5), (0, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
         assert_eq!(dm.insert_file(2, (1, 5)).0, vec![(2, 0), (0, -1), (2, 4), (0, -1), (1, 5), (0, -1), (3, 1), (3, -1), (1, 2), (2, -1), (3, 3)]);
-        println!("{:?}", dm );
+        println!("{dm:?}");
     }
 }
