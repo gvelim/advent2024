@@ -82,27 +82,28 @@ impl Debug for Plot {
             let (west_bound, east_bound) = self.get_plot_bounding_segs();
             let line_segments = self.rows
                 .range((y, west_bound) ..= (y, east_bound))
-                .collect::<Rc<[_]>>();
+                .peekable();
 
-            let mut ls_iter = line_segments.iter();
-            let mut s = ls_iter.next();
+            let mut ls_iter = line_segments.clone();
             for x in left..right {
-                match s {
+                match ls_iter.peek() {
                     Some((_, seg)) if seg.contains(x) =>
                         write!(f, "{}",
                             String::from(seg.plant()).on_truecolor(16,16,128).bright_yellow()
                         )?,
-                    _ => {
+                    segment => {
                         write!(f, "{}", ".".on_truecolor(16,16,128))?;
-                        if let Some((_,seg)) = s {
+                        if let Some((_,seg)) = segment {
                             if x >= seg.end() - 1 {
-                                s = ls_iter.next();
+                                ls_iter.next();
                             }
                         }
                     }
                 }
             }
-            writeln!(f, " = {line_segments:?}" )?;
+            write!(f, " = " )?;
+            f.debug_list().entries(line_segments).finish()?;
+            writeln!(f)?;
         }
         Ok(())
     }
