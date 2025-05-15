@@ -31,16 +31,15 @@ impl Plot {
     }
 
     fn get_plot_y_range(self: &Plot) -> RangeInclusive<usize> {
-        let y_start  = self.rows.first().unwrap().0;
-        let y_end  = self.rows.last().unwrap().0;
-        y_start..=y_end
+        self.rows.first().unwrap().0 ..= self.rows.last().unwrap().0
     }
 
     pub fn get_plot_bounding_segs(&self) -> (PlotSegment, PlotSegment) {
-        let (_, seg) = self.rows.first().unwrap();
-        let west_bound = PlotSegment::new(seg.plant(), 0..1);
-        let east_bound = PlotSegment::new(seg.plant(), Seed::MAX-1..Seed::MAX);
-        (west_bound, east_bound)
+        let plant = self.rows.first().unwrap().1.plant();
+        (
+            PlotSegment::new(plant, 0..1),
+            PlotSegment::new(plant, Seed::MAX-1..Seed::MAX)
+        )
     }
 
     fn north_perimeter_counter(&self, range: impl Iterator<Item = usize>) -> usize  {
@@ -69,13 +68,12 @@ impl Debug for Plot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use colored::Colorize;
 
-        let last = self.rows.last().unwrap().0;
-        let first = self.rows.first().unwrap().0;
-        let (left_vals, right_vals): (Vec<_>,Vec<_>) = self.rows.iter()
-            .map(|(_, seg)| (seg.start(), seg.end() ))
-            .unzip();
-        let left = *left_vals.iter().min().unwrap();
-        let right = *right_vals.iter().max().unwrap();
+        let (first, last) = (self.rows.first().unwrap().0, self.rows.last().unwrap().0);
+        let (left, right) = self.rows
+            .iter()
+            .fold((Seed::MAX, Seed::MIN), |(left,right), (_, seg)| {
+                (left.min(seg.start()), right.max(seg.end()))
+            });
 
         for y in first..=last {
             let (west_bound, east_bound) = self.get_plot_bounding_segs();
