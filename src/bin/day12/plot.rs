@@ -26,7 +26,7 @@ impl Plot {
 
         self.north_perimeter_counter(y_range.clone()) +
             // Scan South Perimeter from bottom->up == scanning top->bottom using the reverse line numbers
-            self.north_perimeter_counter(y_range.clone().rev()) +
+            self.north_perimeter_counter(y_range.rev()) +
             self.rows.len() * 2
     }
 
@@ -80,13 +80,26 @@ impl Debug for Plot {
 
         for y in first..=last {
             let (west_bound, east_bound) = self.get_plot_bounding_segs();
-            let line_segments = self.rows.range((y, west_bound) ..= (y, east_bound)).collect::<Rc<[_]>>();
+            let line_segments = self.rows
+                .range((y, west_bound) ..= (y, east_bound))
+                .collect::<Rc<[_]>>();
 
+            let mut ls_iter = line_segments.iter();
+            let mut s = ls_iter.next();
             for x in left..right {
-                let segment = line_segments.iter().find(|(_, seg)| seg.contains(x));
-                match segment {
-                    Some((_, seg)) => write!(f, "{}", String::from(seg.plant()).on_truecolor(16,16,128).bright_yellow())?,
-                    None => write!(f, "{}", "⬝".on_truecolor(16,16,128))?,
+                match s {
+                    Some((_, seg)) if seg.contains(x) =>
+                        write!(f, "{}",
+                            String::from(seg.plant()).on_truecolor(16,16,128).bright_yellow()
+                        )?,
+                    _ => {
+                        write!(f, "{}", ".".on_truecolor(16,16,128))?;
+                        if let Some((_,seg)) = s {
+                            if x >= seg.end() - 1 {
+                                s = ls_iter.next();
+                            }
+                        }
+                    }
                 }
             }
             writeln!(f, " = {line_segments:?}" )?;
