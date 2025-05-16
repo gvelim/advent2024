@@ -1,4 +1,5 @@
 use std::{collections::BTreeSet, fmt::Debug, ops::RangeInclusive};
+use rayon::iter::{ParallelBridge,ParallelIterator};
 
 use super::segment::{PlotSegment, Seed};
 
@@ -24,10 +25,10 @@ impl Plot {
     pub(super) fn perimeter(&self) -> usize {
         let y_range = self.get_plot_y_range();
 
-        self.north_perimeter_counter(y_range.clone()) +
-            // Scan South Perimeter from bottom->up == scanning top->bottom using the reverse line numbers
-            self.north_perimeter_counter(y_range.rev()) +
-            self.rows.len() * 2
+        self.perimeter_counter(y_range.clone())
+            // a raw has 1 or more segments
+            // therefore all we care is the number of segments
+            + self.rows.len() * 2
     }
 
     fn get_plot_y_range(self: &Plot) -> RangeInclusive<usize> {
@@ -42,25 +43,34 @@ impl Plot {
         )
     }
 
-    fn north_perimeter_counter(&self, range: impl Iterator<Item = usize>) -> usize  {
+    fn perimeter_counter(&self, range: impl Iterator<Item = usize>) -> usize  {
         let (west_bound, east_bound) = self.get_plot_bounding_segs();
 
-        range.map(|y| {
-            self.rows
-                // for each segment in line `y`
-                .range( (y, west_bound.clone()) ..= (y, east_bound.clone()) )
+        range
+            .map(|y| {
+            let current_row = self.rows.range((y, west_bound.clone())..=(y, east_bound.clone()));
+            let above_row = self.rows.range((y-1, west_bound.clone())..=(y-1, east_bound.clone()));
+            let below_row = self.rows.range((y+1, west_bound.clone())..=(y+1, east_bound.clone()));
+
+            // sum non-overlapping units between current raw vs above and below rows
+            current_row
                 .map(|(_, seg)| {
-                    // calculate perimeter on segment's north side
-                    // Sum( segment overlapping area against segment(s) above)
-                    seg.len() as usize - self.rows
-                        .range( (y-1, west_bound.clone()) ..= (y-1, east_bound.clone()) )
-                        .filter(|(_,nseg)| nseg.is_overlapping(seg) )
+                    // count above overlapping units
+                    let above = above_row.clone()
+                        .filter(|(_,nseg)| nseg.is_overlapping(seg))
                         .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
-                        .sum::<usize>()
+                        .sum::<usize>();
+                    // count below overlapping units
+                    let below = below_row.clone()
+                        .filter(|(_,nseg)| nseg.is_overlapping(seg))
+                        .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
+                        .sum::<usize>();
+                    // perimeter = (segment length - above overlaping units) + (segment length - above overlaping units) =>
+                    // perimeter = 2 * segment lengths - above - below overlapping units
+                    2 * seg.len() as usize - above - below
                 })
                 .sum::<usize>()
-        })
-        .sum::<usize>()
+        }).sum::<usize>()
     }
 }
 
