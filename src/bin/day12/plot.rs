@@ -1,6 +1,4 @@
 use std::{collections::BTreeSet, fmt::Debug, ops::RangeInclusive};
-use rayon::iter::{ParallelBridge,ParallelIterator};
-
 use super::segment::{PlotSegment, Seed};
 
 #[derive(Default)]
