@@ -5,7 +5,7 @@ mod garden;
 use garden::Garden;
 
 fn main() {
-    let input = std::fs::read_to_string("src/bin/day12/sample1.txt").unwrap();
+    let input = std::fs::read_to_string("src/bin/day12/input.txt").unwrap();
 
     let garden = Garden::parse_garden(&input);
 

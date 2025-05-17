@@ -43,10 +43,14 @@ impl Plot {
         )
     }
 
-    fn perimeter_counter(&self, mut lines: impl Iterator<Item = usize>) -> usize  {
+    fn perimeter_counter(&self, lines: impl Iterator<Item = usize>) -> usize  {
         let (west_bound, east_bound) = self.get_plot_bounding_segs();
 
-        let Some(start) = lines.next() else { panic!("perimeter_counter(): Empty 'y' range")};
+        let mut lines = lines.peekable();
+        let Some(&start) = lines.peek() else { panic!("perimeter_counter(): Empty 'y' range")};
+
+        // we fold each iteration using (above, current, below and sum) as input parameters
+        // this reduces the number of BTreeSet queries from 3 down to 1 per iteration
         let (_, _, _, sum) = lines
             .fold(
                 (
@@ -55,14 +59,8 @@ impl Plot {
                     self.rows.range((start+1, west_bound.clone())..=(start+1, east_bound.clone())),
                     0
                 ),
-                |(
-                    above_row,
-                    current_row,
-                    below_row,
-                    sum
-                ), y| {
+                |( above_row, current_row, below_row, sum), y| {
 
-            println!("{y}: {above_row:?} / {current_row:?} / {below_row:?}");
             // sum non-overlapping units between current raw vs above and below rows
             let new_sum = sum + current_row.clone()
                 .map(|(_, seg)| {
@@ -85,9 +83,12 @@ impl Plot {
                 .sum::<usize>();
 
             (
+                // contains y becomes y-1 in next cycle
                 current_row,
+                // contains y+1 becomes y in next cycle
                 below_row,
-                self.rows.range((y+1, west_bound.clone())..=(y+1, east_bound.clone())),
+                // we need y+2 so it becomes y+1 in next cycle
+                self.rows.range((y+2, west_bound.clone())..=(y+2, east_bound.clone())),
                 new_sum
             )
         });
