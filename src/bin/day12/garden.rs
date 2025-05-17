@@ -49,7 +49,7 @@ impl Garden {
 fn push_segments(plots: &mut BTreeMap<usize, Plot>, g_line: impl Iterator<Item = (PlotSegment, usize, bool)>, line: usize) {
     g_line
         .for_each(|(seg, id, _)| {
-            plots.entry(id).or_default().insert(line, seg);
+            plots.entry(id).or_default().insert(line-1, seg);
         });
 }
 
@@ -118,8 +118,8 @@ fn process_segment(
             // clone plot segment and plot_id; don't remove it until all remaining new segments are processed
             let (seg, plot_id, _) = g_line[index].clone();
 
-            // move plot segment onto the garden map under the current line number
-            garden.entry(plot_id).or_default().insert(line, seg);
+            // move cloned plot segment onto the garden map under the current line number
+            garden.entry(plot_id).or_default().insert(line-1, seg);
 
             // if plot_id is NOT equal to master_id, then consolidate plots
             if plot_id != master_id {

@@ -23,7 +23,7 @@ impl Plot {
     pub(super) fn perimeter(&self) -> usize {
         let y_range = self.get_plot_y_range();
 
-        self.perimeter_counter(y_range.clone())
+        self.edge_count_north_south(y_range.clone())
             // a row may contain 1 or more segments of the same plot with gaps in between
             // plot segments in the same raw are *isolated*, that is, they are never next to each other, end of first != start of second
             // therefore vertical segments per row is 2 * number of segments
@@ -43,7 +43,7 @@ impl Plot {
         )
     }
 
-    fn perimeter_counter(&self, lines: impl Iterator<Item = usize>) -> usize  {
+    fn edge_count_north_south(&self, lines: impl Iterator<Item = usize>) -> usize  {
         let (west_bound, east_bound) = self.get_plot_bounding_segs();
 
         let mut lines = lines.peekable();
