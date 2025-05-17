@@ -24,8 +24,10 @@ impl Plot {
         let y_range = self.get_plot_y_range();
 
         self.perimeter_counter(y_range.clone())
-            // a raw has 1 or more segments
-            // therefore all we care is the number of segments
+            // a row may contain 1 or more segments of the same plot with gaps in between
+            // plot segments in the same raw are *isolated*, that is, they are never next to each other, end of first != start of second
+            // therefore vertical segments per row is 2 * number of segments
+            // therefore sum(row) == total segments * 2
             + self.rows.len() * 2
     }
 
@@ -41,34 +43,55 @@ impl Plot {
         )
     }
 
-    fn perimeter_counter(&self, range: impl Iterator<Item = usize>) -> usize  {
+    fn perimeter_counter(&self, mut lines: impl Iterator<Item = usize>) -> usize  {
         let (west_bound, east_bound) = self.get_plot_bounding_segs();
 
-        range
-            .map(|y| {
-            let current_row = self.rows.range((y, west_bound.clone())..=(y, east_bound.clone()));
-            let above_row = self.rows.range((y-1, west_bound.clone())..=(y-1, east_bound.clone()));
-            let below_row = self.rows.range((y+1, west_bound.clone())..=(y+1, east_bound.clone()));
+        let Some(start) = lines.next() else { panic!("perimeter_counter(): Empty 'y' range")};
+        let (_, _, _, sum) = lines
+            .fold(
+                (
+                    self.rows.range((start-1, west_bound.clone())..=(start-1, east_bound.clone())),
+                    self.rows.range((start, west_bound.clone())..=(start, east_bound.clone())),
+                    self.rows.range((start+1, west_bound.clone())..=(start+1, east_bound.clone())),
+                    0
+                ),
+                |(
+                    above_row,
+                    current_row,
+                    below_row,
+                    sum
+                ), y| {
 
+            println!("{y}: {above_row:?} / {current_row:?} / {below_row:?}");
             // sum non-overlapping units between current raw vs above and below rows
-            current_row
+            let new_sum = sum + current_row.clone()
                 .map(|(_, seg)| {
                     // count above overlapping units
                     let above = above_row.clone()
                         .filter(|(_,nseg)| nseg.is_overlapping(seg))
                         .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
                         .sum::<usize>();
+
                     // count below overlapping units
                     let below = below_row.clone()
                         .filter(|(_,nseg)| nseg.is_overlapping(seg))
                         .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
                         .sum::<usize>();
+
                     // perimeter = (segment length - above overlaping units) + (segment length - above overlaping units) =>
                     // perimeter = 2 * segment lengths - above - below overlapping units
                     2 * seg.len() as usize - above - below
                 })
-                .sum::<usize>()
-        }).sum::<usize>()
+                .sum::<usize>();
+
+            (
+                current_row,
+                below_row,
+                self.rows.range((y+1, west_bound.clone())..=(y+1, east_bound.clone())),
+                new_sum
+            )
+        });
+        sum
     }
 }
 
