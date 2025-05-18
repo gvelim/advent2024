@@ -82,6 +82,7 @@ mod tests {
         let seg3 = PlotSegment('R', 0..3);
         let seg4 = PlotSegment('R', 4..6);
         let seg5 = PlotSegment('R', 0..2);
+        let seg6 = PlotSegment('R', 2..6);
         assert!(seg1.is_overlapping(&seg1));
         assert!(seg1.is_overlapping(&seg2));
         assert!(seg1.is_overlapping(&seg3));
@@ -89,6 +90,7 @@ mod tests {
         assert!(!seg3.is_overlapping(&seg2));
         assert!(!seg1.is_overlapping(&seg4));
         assert!(!seg1.is_overlapping(&seg5));
+        assert!(seg1.is_overlapping(&seg6));
     }
 
     #[test]

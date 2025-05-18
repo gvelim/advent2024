@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::iter::repeat_n;
+use std::iter::{repeat, repeat_n};
 use std::{collections::BTreeMap, ops::Index};
 use advent2024::id_generator;
 use rand::Rng;
@@ -63,6 +63,7 @@ fn process_line(
 ) -> (BTreeMap<usize, Plot>, LastGardenScanLine)
 {
     let mut new_g_line = LastGardenScanLine::default();
+    // println!("In: {input}\n{:?}",g_line);
     // for each plant segment
     let (mut plots, mut g_line) = extract_ranges(input)
         .fold((plots, g_line), |(plots, g_line), segment| {
@@ -77,10 +78,11 @@ fn process_line(
             (plots, g_line)
         });
 
+    // println!("WIP: {:?}",g_line);
     // Any scanline segments that didn't match indicate the end of plot region
     // therefore we move such segments to the garden map using their respective plot ID and current line number
     push_segments(&mut plots, g_line.drain_unmatched(), line);
-
+    // println!("New: {:?}\n",new_g_line);
     (plots, new_g_line)
 }
 
@@ -99,7 +101,7 @@ fn process_segment(
     {
     // find active plots matching this segment
     // matching = (a) overlapping with && (b) have same plant type
-    let matched = g_line.overlaps(segment);
+    let mut matched = g_line.overlaps(segment);
 
     // if empty, then return a new plot ID for the segment
     if matched.is_empty() {
@@ -107,11 +109,12 @@ fn process_segment(
     }
 
     // otherwise, use the first matching plot ID as the master ID for consolidating all matched plots
-    let (_, master_id, _) = g_line[ matched[0] ];
+    matched.sort_by_key(|(_,id)| *id);
+    let (_, master_id, _) = g_line[ matched[0].0 ];
 
     matched.iter()
         // for each matched plot segment
-        .fold((plots, g_line, master_id), |(mut garden, mut g_line, master_id), &index| {
+        .fold((plots, g_line, master_id), |(mut garden, mut g_line, master_id), &(index, _id)| {
             // flag it as matched; that is, plot region continues to next line
             g_line.flag_matched(index);
 
@@ -123,6 +126,8 @@ fn process_segment(
 
             // if plot_id is NOT equal to master_id, then consolidate plots
             if plot_id != master_id {
+                //
+                g_line.find_replace_plot_id(plot_id, master_id);
                 // remove plot ID from garden map and hold onto its segments
                 let plot = garden.remove(&plot_id).unwrap();
                 // merge removed segments into the plot with master ID
@@ -150,19 +155,24 @@ impl Debug for Garden {
         use itertools::Itertools;
 
         let segments = self.plots
-            .values()
-            .flat_map(|plot|  plot.iter())
+            .iter()
+            .flat_map(|(id, plot)|
+                repeat(id).zip(plot.iter())
+            )
+            .map(|(p_id, (y, p_seg))| (y,(p_seg,p_id)))
             .collect::<BTreeSet<_>>();
 
         let mut thread = rng();
-        let color_map = ('A'..='Z')
-            .map(|plant|
+        let color_map = segments
+            .clone()
+            .iter()
+            .map(|&(_,(_,&p_id))|
                 (
-                    plant,
+                    p_id,
                     (
-                        thread.random_range(8..=0x7F),
-                        thread.random_range(8..=0x7F),
-                        thread.random_range(8..=0x7F)
+                        thread.random_range(0x07..=0x7F),
+                        thread.random_range(0x07..=0x7F),
+                        thread.random_range(0x07..=0x7F)
                     )
                 )
             )
@@ -170,13 +180,14 @@ impl Debug for Garden {
 
         segments
             .into_iter()
-            .chunk_by(|(y,_)| y)
+            .chunk_by(|&(y,_)| y )
             .into_iter()
-            .for_each(|(_,segs)| {
+            .for_each(|(y, segs)| {
+                write!(f, "{:3} ",y+1).ok();
                 segs.into_iter()
-                    .for_each(|(_,seg)|{
-                        let colour = color_map[ &seg.plant()];
-                        let plant = repeat_n(seg.plant(), seg.len() as usize)
+                    .for_each(|(_,(p_seg, p_id))|{
+                        let colour = color_map[p_id];
+                        let plant = repeat_n(p_seg.plant(), p_seg.len() as usize)
                             .collect::<String>()
                             .on_truecolor(colour.0, colour.1, colour.2);
                         write!(f, "{plant}").ok();
@@ -187,7 +198,7 @@ impl Debug for Garden {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug,Default)]
 struct LastGardenScanLine {
     segments: Vec<(PlotSegment, usize, bool)>,
 }
@@ -201,13 +212,13 @@ impl Index<usize> for LastGardenScanLine {
 }
 
 impl LastGardenScanLine {
-    fn overlaps(&self, segment: &PlotSegment) -> Vec<usize> {
+    fn overlaps(&self, segment: &PlotSegment) -> Vec<(usize,usize)> {
         self.segments
             .iter()
             .enumerate()
-            .filter_map(|(i, (aseg, _, _))|
+            .filter_map(|(i, (aseg, id, _))|
                 if aseg.plant() == segment.plant() &&
-                    aseg.is_overlapping(segment) { Some(i) } else { None }
+                    aseg.is_overlapping(segment) { Some((i,*id)) } else { None }
             )
             .collect::<Vec<_>>()
     }
@@ -222,5 +233,14 @@ impl LastGardenScanLine {
     }
     fn drain_unmatched(&mut self) -> impl Iterator<Item = (PlotSegment, usize, bool)> {
         self.segments.drain(..).filter(|(_,_,mathced)| !mathced)
+    }
+    fn find_replace_plot_id(&mut self, from_id: usize, to_id: usize ) -> bool {
+        self.segments
+            .iter_mut()
+            .filter(|(_,s_id,_)| from_id.eq(s_id) )
+            .all(|(_,id,_)| {
+                *id = to_id;
+                true
+            })
     }
 }
