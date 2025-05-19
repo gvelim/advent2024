@@ -126,10 +126,13 @@ fn process_segment(
 
             // if plot_id is NOT equal to master_id, then consolidate plots
             if plot_id != master_id {
-                //
+                // Keep LastGardenScanLine consisent with Garden
+                // by replacing segments with plot_id to master_id
                 g_line.find_replace_plot_id(plot_id, master_id);
+
                 // remove plot ID from garden map and hold onto its segments
                 let plot = garden.remove(&plot_id).unwrap();
+
                 // merge removed segments into the plot with master ID
                 garden.entry(master_id)
                 .or_default()
@@ -166,13 +169,13 @@ impl Debug for Garden {
         let color_map = segments
             .clone()
             .iter()
-            .map(|&(_,(_,&p_id))|
+            .map(|&(_,(seg,&p_id))|
                 (
                     p_id,
                     (
-                        thread.random_range(0x07..=0x7F),
-                        thread.random_range(0x07..=0x7F),
-                        thread.random_range(0x07..=0x7F)
+                        thread.random_range(0x00..= 0xFF) ^ seg.plant() as u8,
+                        thread.random_range(0x00..= 0xFF) ^ seg.plant() as u8,
+                        thread.random_range(0x00..= 0xFF) ^ seg.plant() as u8
                     )
                 )
             )
