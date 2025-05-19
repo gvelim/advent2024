@@ -67,7 +67,7 @@ fn process_line(
     // for each plant segment
     let (mut plots, mut g_line) = extract_ranges(input)
         .fold((plots, g_line), |(plots, g_line), segment| {
-            let (plots, g_line, seg_id) = process_segment(
+            let (plots, g_line, seg_id, depr_ids) = process_segment(
                 &segment,
                 plots,
                 g_line,
@@ -75,6 +75,18 @@ fn process_line(
                 &mut get_plot_id
             );
             new_g_line.push(segment, seg_id);
+            // replace any ids from already processed segments
+            // that have just got depracated as result of segment processed
+            // Cur LastGardenLine -> ZZZ5ZZZZ..ZZ2ZZZZZZZ
+            // New LastGardenLine -> Z5Z...ZZ2ZZ...ZZZZZZ
+            // above first segment processed with id 5, however
+            // the processing of the 2nd segment causes the id 5 to be depracated
+            if let Some(ids) = depr_ids {
+                ids.into_iter()
+                    .all(|id|
+                        new_g_line.find_replace_plot_id(id, seg_id)
+                    );
+            }
             (plots, g_line)
         });
 
@@ -91,13 +103,15 @@ fn process_line(
 // otherwise the ID of the overlapping plot region is returned
 // the function also marks known plots as matched
 // If the segment overlaps with multiple plots, the plots are merged under a single ID (master_id)
+// We return a list of depracated plot IDs as the caller will need to know
+// if any previous plot IDs passed under the new LastGardenLine have been depracated
 fn process_segment(
     segment: &PlotSegment,
     plots: BTreeMap<usize, Plot>,
     g_line: LastGardenScanLine,
     line: usize,
     mut get_plot_id: impl FnMut() -> usize
-) -> (BTreeMap<usize, Plot>, LastGardenScanLine, usize)
+) -> (BTreeMap<usize, Plot>, LastGardenScanLine, usize, Option<Vec<usize>>)
     {
     // find active plots matching this segment
     // matching = (a) overlapping with && (b) have same plant type
@@ -105,7 +119,7 @@ fn process_segment(
 
     // if empty, then return a new plot ID for the segment
     if matched.is_empty() {
-        return (plots, g_line, get_plot_id());
+        return (plots, g_line, get_plot_id(), None);
     }
 
     // otherwise, use the first matching plot ID as the master ID for consolidating all matched plots
@@ -114,7 +128,7 @@ fn process_segment(
 
     matched.iter()
         // for each matched plot segment
-        .fold((plots, g_line, master_id), |(mut garden, mut g_line, master_id), &(index, _id)| {
+        .fold((plots, g_line, master_id, None), |(mut garden, mut g_line, master_id, mut depr_ids), &(index, _id)| {
             // flag it as matched; that is, plot region continues to next line
             g_line.flag_matched(index);
 
@@ -137,8 +151,11 @@ fn process_segment(
                 garden.entry(master_id)
                 .or_default()
                 .extend(plot);
+
+                // add to the depracated plot ID list
+                depr_ids.get_or_insert_default().push(plot_id);
             }
-            (garden, g_line, master_id)
+            (garden, g_line, master_id, depr_ids)
         })
 }
 
