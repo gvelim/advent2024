@@ -29,4 +29,5 @@ fn main() {
 
     println!("{:?}", &garden);
     println!("Garden total cost : {total}");
+    //assert_eq!(total, 1533024)
 }
