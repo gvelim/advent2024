@@ -190,9 +190,9 @@ impl Debug for Garden {
                 (
                     p_id,
                     (
-                        thread.random_range(0x00..= 0xFF) ^ seg.plant() as u8,
-                        thread.random_range(0x00..= 0xFF) ^ seg.plant() as u8,
-                        thread.random_range(0x00..= 0xFF) ^ seg.plant() as u8
+                        thread.random_range(0x07..=0x7F) ^ seg.plant() as u8,
+                        thread.random_range(0x07..=0x7F) ^ seg.plant() as u8,
+                        thread.random_range(0x07..=0x7F) ^ seg.plant() as u8
                     )
                 )
             )
