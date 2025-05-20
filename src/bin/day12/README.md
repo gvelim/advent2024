@@ -298,8 +298,8 @@ Calculating the perimeter is more involved:
 ```
 
 **Insight:** The perimeter calculation involves two parts:
-1. Vertical edges: These are counted by comparing segments on adjacent lines (North/South). The `edge_count_north_south` function handles this.
-2. Horizontal edges: These occur at the start and end of each `PlotSegment` on its row (Left/Right). Since segments on the same row for the same plot are guaranteed not to touch horizontally, each segment contributes a left and a right edge, totaling `self.rows.len() * 2`.
+1. Horizontal edges: These are counted by comparing segments on adjacent lines (North/South). The `edge_count_north_south` function handles this.
+2. Vertical edges: These occur at the start and end of each `PlotSegment` on its row (Left/Right). Since segments on the same row for the same plot are guaranteed not to touch horizontally, each segment contributes a left and a right edge, totaling `self.rows.len() * 2`.
 
 Let's look at `edge_count_north_south`:
 
