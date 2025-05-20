@@ -82,9 +82,9 @@ fn process_line(
             if let Some(ids) = depr_ids {
                 ids.into_iter()
                     .all(|plot_id| {
-                        // remove plot ID from garden map and hold onto its segments
+                        // remove depracated ID from garden map and hold onto its segments
                         let plot = plots.remove(&plot_id).unwrap();
-                        // merge removed segments into the plot with master ID
+                        // merge removed segments with processed segment's plot ID
                         plots.entry(seg_id).or_default().extend(plot);
                         // LastGardenScanLine might contain segments with deprecated IDs
                         // hence such segments must have their ID replaced with seg_id
@@ -124,36 +124,36 @@ fn process_segment(
     mut get_plot_id: impl FnMut() -> usize
 ) -> (BTreeMap<usize, Plot>, LastGardenScanLine, usize, Option<Vec<usize>>)
     {
-    // find active plots matching this segment
-    // matching = (a) overlapping with && (b) have same plant type
-    let mut matched = g_line.overlaps(segment);
-    // if empty, then return a new plot ID for the segment
-    if matched.is_empty() {
-        return (plots, g_line, get_plot_id(), None);
-    }
-    // otherwise, use the smallest plot ID matched as our master ID
-    // Critical insight: very first plot instance formation has the smallest ID,
-    // hence when two areas are merged the area with the smallest ID
-    // is quaranteed to have formed first hence must absorb the other area
-    matched.sort_by_key(|(_,id)| *id);
-    let (_, master_id, _) = g_line[ matched[0].0 ];
+        // find active plots matching this segment
+        // matching = (a) overlapping with && (b) have same plant type
+        let mut matched = g_line.overlaps(segment);
+        // if empty, then this we form a new plot by creating a new ID for the segment
+        if matched.is_empty() {
+            return (plots, g_line, get_plot_id(), None);
+        }
+        // otherwise, use the smallest plot ID matched as our master ID
+        // Critical insight: very first plot instance formation always has the smallest ID,
+        // hence when two areas are merged the area with the smallest ID
+        // is quaranteed to have formed first hence must absorb the other area
+        matched.sort_by_key(|(_,id)| *id);
+        let (_, master_id, _) = g_line[ matched[0].0 ];
 
-    matched.iter()
-        // for each matched plot segment
-        .fold((plots, g_line, master_id, None), |(mut garden, mut g_line, master_id, mut depr_ids), &(index, _id)| {
-            // flag it as matched; that is, plot region continues to next line
-            g_line.flag_matched(index);
-            // clone plot segment and plot_id; don't remove it until all remaining new segments are processed
-            let (seg, plot_id, _) = g_line[index].clone();
-            // move cloned plot segment onto the garden map under the current line number
-            garden.entry(plot_id).or_default().insert(line-1, seg);
-            // if plot_id is NOT equal to master_id, then consolidate plots
-            if plot_id != master_id {
-                // push plot ID to the depracated plot ID list
-                depr_ids.get_or_insert_default().push(plot_id);
-            }
-            (garden, g_line, master_id, depr_ids)
-        })
+        matched.iter()
+            // for each matched plot segment
+            .fold((plots, g_line, master_id, None), |(mut garden, mut g_line, master_id, mut depr_ids), &(index, _id)| {
+                // flag it as matched; that is, plot region continues to next line
+                g_line.flag_matched(index);
+                // clone plot segment and plot_id; don't remove it until all remaining new segments are processed
+                let (seg, plot_id, _) = g_line[index].clone();
+                // move cloned plot segment onto the garden map under the current line number
+                garden.entry(plot_id).or_default().insert(line-1, seg);
+                // if plot_id is NOT equal to master_id, then consolidate plots
+                if plot_id != master_id {
+                    // push plot ID to the depracated plot ID list
+                    depr_ids.get_or_insert_default().push(plot_id);
+                }
+                (garden, g_line, master_id, depr_ids)
+            })
 }
 
 impl Index<&usize> for Garden {
