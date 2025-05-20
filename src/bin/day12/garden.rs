@@ -66,40 +66,44 @@ fn process_line(
     // println!("In: {input}\n{:?}",g_line);
     // for each plant segment
     let (mut plots, mut g_line) = extract_ranges(input)
-        .fold((plots, g_line), |(plots, g_line), segment| {
-            // process segment against last Garden Scan Line
-            let (
-                mut plots,
-                mut g_line,
-                seg_id,
-                depr_ids
-            ) = process_segment( &segment, plots, g_line, line, &mut get_plot_id );
+        .fold(
+            (plots, g_line),
+            |(plots, g_line), segment|
+            {
+                // process segment against last Garden Scan Line
+                let (
+                    mut plots,
+                    mut g_line,
+                    seg_id,
+                    depr_ids
+                ) = process_segment( &segment, plots, g_line, line, &mut get_plot_id );
 
-            // segmened allocated to a plot ID and
-            new_g_line.push(segment, seg_id);
+                // segmened allocated to a plot ID and
+                new_g_line.push(segment, seg_id);
 
-            // deal with IDs that got depracated by the segment we just procesed
-            if let Some(ids) = depr_ids {
-                ids.into_iter()
-                    .all(|plot_id| {
-                        // remove depracated ID from garden map and hold onto its segments
-                        let plot = plots.remove(&plot_id).unwrap();
-                        // merge removed segments with processed segment's plot ID
-                        plots.entry(seg_id).or_default().extend(plot);
-                        // LastGardenScanLine might contain segments with deprecated IDs
-                        // hence such segments must have their ID replaced with seg_id
-                        g_line.find_replace_plot_id(plot_id, seg_id);
-                        // Also, we might have stored segments in the next LastGardenScanLine
-                        // with their IDs being depracated by the segment we just processed, e.g.
-                        // Cur LastGardenLine -> ZZZ5ZZZZ..ZZ2ZZZZZZZ
-                        // New LastGardenLine -> Z5Z...ZZ2ZZ...ZZZ2ZZ
-                        // above first segment got processed first and stored with id 5, however
-                        // when the 2nd segment got processed depracated 5 for 2 hence
-                        new_g_line.find_replace_plot_id(plot_id, seg_id)
-                    });
+                // deal with IDs that got depracated by the segment we just procesed
+                if let Some(ids) = depr_ids {
+                    ids.into_iter()
+                        .all(|plot_id| {
+                            // remove depracated ID from garden map and hold onto its segments
+                            let plot = plots.remove(&plot_id).unwrap();
+                            // merge removed segments with processed segment's plot ID
+                            plots.entry(seg_id).or_default().extend(plot);
+                            // Active LastGardenScanLine might contain segments with deprecated IDs
+                            // hence such segments must have their ID replaced with seg_id
+                            g_line.find_replace_plot_id(plot_id, seg_id);
+                            // Also, we might have stored segments in the next LastGardenScanLine
+                            // with their IDs being depracated by the segment we just processed, e.g.
+                            // Cur LastGardenLine -> ZZZ5ZZZZ..ZZ2ZZZZZZZ
+                            // New LastGardenLine -> Z5Z...ZZ2ZZ...ZZZ2ZZ
+                            // above first segment got processed first and stored with id 5, however
+                            // when the 2nd segment got processed depracated 5 for 2 hence
+                            new_g_line.find_replace_plot_id(plot_id, seg_id)
+                        });
+                }
+                (plots, g_line)
             }
-            (plots, g_line)
-        });
+        );
 
     // println!("WIP: {:?}",g_line);
     // Any scanline segments that didn't match indicate the end of plot region
@@ -114,8 +118,7 @@ fn process_line(
 // otherwise the ID of the overlapping plot region is returned
 // the function also marks known plots as matched
 // If the segment overlaps with multiple plots, the plots are merged under a single ID (master_id)
-// We return a list of depracated plot IDs as the caller will need to know
-// if any previous plot IDs passed under the new LastGardenLine have been depracated
+// We return a list of depracated plot IDs for post-processing
 fn process_segment(
     segment: &PlotSegment,
     plots: BTreeMap<usize, Plot>,
@@ -138,22 +141,27 @@ fn process_segment(
         matched.sort_by_key(|(_,id)| *id);
         let (_, master_id, _) = g_line[ matched[0].0 ];
 
-        matched.iter()
+        matched
+            .iter()
             // for each matched plot segment
-            .fold((plots, g_line, master_id, None), |(mut garden, mut g_line, master_id, mut depr_ids), &(index, _id)| {
-                // flag it as matched; that is, plot region continues to next line
-                g_line.flag_matched(index);
-                // clone plot segment and plot_id; don't remove it until all remaining new segments are processed
-                let (seg, plot_id, _) = g_line[index].clone();
-                // move cloned plot segment onto the garden map under the current line number
-                garden.entry(plot_id).or_default().insert(line-1, seg);
-                // if plot_id is NOT equal to master_id, then consolidate plots
-                if plot_id != master_id {
-                    // push plot ID to the depracated plot ID list
-                    depr_ids.get_or_insert_default().push(plot_id);
+            .fold(
+                (plots, g_line, master_id, None),
+                |(mut garden, mut g_line, master_id, mut depr_ids), &(index, _id)|
+                {
+                    // flag it as matched; that is, plot region continues to next line
+                    g_line.flag_matched(index);
+                    // clone plot segment and plot_id; don't remove it until all remaining new segments are processed
+                    let (seg, plot_id, _) = g_line[index].clone();
+                    // move cloned plot segment onto the garden map under the current line number
+                    garden.entry(plot_id).or_default().insert(line-1, seg);
+                    // if plot_id is NOT equal to master_id, then consolidate plots
+                    if plot_id != master_id {
+                        // push plot ID to the depracated plot ID list
+                        depr_ids.get_or_insert_default().push(plot_id);
+                    }
+                    (garden, g_line, master_id, depr_ids)
                 }
-                (garden, g_line, master_id, depr_ids)
-            })
+            )
 }
 
 impl Index<&usize> for Garden {
