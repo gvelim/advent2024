@@ -21,7 +21,7 @@ Let's break down the implementation step by step.
 
 The most basic unit of information on a single line is a continuous stretch of the same plant. We need a way to represent this.
 
-```rs advent2024/src/bin/day12/segment.rs#L4-5
+```rust
 pub(super) struct PlotSegment(char, Range<Seed>);
 ```
 
@@ -31,23 +31,23 @@ pub(super) struct PlotSegment(char, Range<Seed>);
 
 Key methods implemented for `PlotSegment` include:
 
-```rs advent2024/src/bin/day12/segment.rs#L14-26
-    pub(super) fn contains(&self, seed: Seed) -> bool {
-        self.1.contains(&seed)
-    }
-    // ...
-    pub(super) fn len(&self) -> Seed {
-        self.1.end as Seed - self.1.start as Seed
-    }
-    pub(super) fn is_overlapping(&self, other: &Self) -> bool {
-        self.start() < other.end() && self.end() > other.start()
-    }
-    pub(super) fn get_overlap(&self, other: &Self) -> Seed {
-        // find the absolute overlap between the two segments
-        let start = self.start().max(other.start());
-        let end = self.end().min(other.end());
-        end - start
-    }
+```rust
+pub(super) fn contains(&self, seed: Seed) -> bool {
+    self.1.contains(&seed)
+}
+// ...
+pub(super) fn len(&self) -> Seed {
+    self.1.end as Seed - self.1.start as Seed
+}
+pub(super) fn is_overlapping(&self, other: &Self) -> bool {
+    self.start() < other.end() && self.end() > other.start()
+}
+pub(super) fn get_overlap(&self, other: &Self) -> Seed {
+    // find the absolute overlap between the two segments
+    let start = self.start().max(other.start());
+    let end = self.end().min(other.end());
+    end - start
+}
 ```
 
 These methods allow us to determine if a specific column is part of the segment, calculate its length, check for horizontal overlaps with other segments, and quantify the degree of overlap. The `Ord` and `PartialOrd` implementations are crucial for sorting `PlotSegment`s, particularly when stored in ordered collections like `BTreeSet`.
@@ -56,7 +56,7 @@ These methods allow us to determine if a specific column is part of the segment,
 
 The raw input is a string containing many lines. We need to transform each line into a sequence of `PlotSegment`s.
 
-```rs advent2024/src/bin/day12/segment.rs#L50-58
+```rust
 pub(super) fn extract_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
     let mut idx = 0;
     line.as_bytes()
@@ -77,7 +77,7 @@ pub(super) fn extract_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
 
 A single plot can span multiple lines and consist of multiple horizontal segments on a single line (if there are gaps of different plants within the plot's overall horizontal span). We need a data structure to represent these multi-line, potentially discontinuous, regions.
 
-```rs advent2024/src/bin/day12/plot.rs#L5-7
+```rust
 #[derive(Default)]
 pub(super) struct Plot {
     rows: BTreeSet<(usize, PlotSegment)>
@@ -96,7 +96,7 @@ This is the most complex part of the program: connecting the horizontal `PlotSeg
 
 The main structure holding all identified plots is the `Garden`:
 
-```rs advent2024/src/bin/day12/garden.rs#L10-13
+```rust
 #[derive(Default)]
 pub(super) struct  Garden {
     plots: BTreeMap<usize, Plot>
@@ -111,7 +111,7 @@ The core logic for garden assembly resides in the `parse_garden` function, which
 
 Let's look at `parse_garden`:
 
-```rs advent2024/src/bin/day12/garden.rs#L21-43
+```rust
     pub(super) fn parse_garden(input: &str) -> Garden {
         // id generator fn()
         let mut get_new_plot_id = id_generator(0);
@@ -146,7 +146,7 @@ Let's look at `parse_garden`:
 
 The `process_line` function is called by `parse_garden` for every line of the input. Its role is to determine how the segments on the *current* line connect to the plots identified on the *previous* line.
 
-```rs advent2024/src/bin/day12/garden.rs#L56-81
+```rust
 fn process_line(
     input: &str,
     plots: BTreeMap<usize, Plot>, // plots collected so far
@@ -202,7 +202,7 @@ fn process_line(
 
 The `process_segment` function is the heart of the plot identification and merging logic. It takes a single `segment` from the *current* line and compares it against the segments recorded in the `g_line` (the state from the *previous* line).
 
-```rs advent2024/src/bin/day12/garden.rs#L84-128
+```rust
 // for each new segment identify the plot that is overlapping with and assign the segment the plot's ID
 fn process_segment(
     segment: &PlotSegment, // The segment from the current line being processed
@@ -272,7 +272,7 @@ fn process_segment(
 
 Once the `Garden` is fully parsed and all `Plot`s are assembled, we can calculate their properties.
 
-```rs advent2024/src/bin/day12/plot.rs#L27-29
+```rust
     pub(super) fn area(self: &Plot) -> usize {
         self.rows.iter().map(|seg| seg.1.len() as usize).sum::<usize>()
     }
@@ -284,7 +284,7 @@ Once the `Garden` is fully parsed and all `Plot`s are assembled, we can calculat
 
 Calculating the perimeter is more involved:
 
-```rs advent2024/src/bin/day12/plot.rs#L31-41
+```rust
     pub(super) fn perimeter(&self) -> usize {
         let y_range = self.get_plot_y_range();
 
@@ -303,7 +303,7 @@ Calculating the perimeter is more involved:
 
 Let's look at `edge_count_north_south`:
 
-```rs advent2024/src/bin/day12/plot.rs#L43-82
+```rust
     fn edge_count_north_south(&self, lines: impl Iterator<Item = usize>) -> usize  {
         let (west_bound, east_bound) = self.get_plot_bounding_segs();
 
@@ -365,7 +365,7 @@ Let's look at `edge_count_north_south`:
 
 Understanding the output of a spatial algorithm is crucial for debugging and verification. The program includes `Debug` implementations that provide a visual representation.
 
-```rs advent2024/src/bin/day12/garden.rs#L103-129
+```rust
 impl Debug for Garden {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use colored::Colorize;
@@ -380,7 +380,7 @@ impl Debug for Garden {
 
 There is also a `Debug` implementation for `Plot` in `plot.rs` which lists the segments for a single plot organized by row number, providing a more detailed look at the structure of an individual plot.
 
-```rs advent24/src/bin/day12/plot.rs#L85-119
+```rust
 impl Debug for Plot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // ... rendering code ...
@@ -392,7 +392,7 @@ impl Debug for Plot {
 
 The `main` function ties all these components together to execute the program.
 
-```rs advent2024/src/bin/day12/main.rs#L7-27
+```rust
 fn main() {
     let args = std::env::args();
     let input = std::fs::read_to_string(
