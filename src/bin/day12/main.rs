@@ -1,9 +1,9 @@
 mod segment;
 mod plot;
 mod garden;
+mod parser;
 
 use std::time;
-
 use garden::Garden;
 
 fn main() {
@@ -15,7 +15,7 @@ fn main() {
         }
     ).unwrap();
 
-    let garden = Garden::parse_garden(&input);
+    let garden = Garden::parse(&input);
 
     let t = time::Instant::now();
     let total = garden

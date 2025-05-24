@@ -64,19 +64,6 @@ impl Debug for PlotSegment {
     }
 }
 
-// given a line RRRRIICCFF
-// will return ('R', 0..4), ('I', 4..6), ('C', 6..8), ('F', 8..10)
-pub(super) fn extract_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
-    let mut idx = 0;
-    line.as_bytes()
-        .chunk_by(|a, b| a == b)
-        .map(move |chunk| {
-            let start = idx;
-            idx += chunk.len() as Seed;
-            PlotSegment(chunk[0] as char, start..idx)
-        })
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -98,16 +85,5 @@ mod tests {
         assert!(!seg1.is_overlapping(&seg4));
         assert!(!seg1.is_overlapping(&seg5));
         assert!(seg1.is_overlapping(&seg6));
-    }
-
-    #[test]
-    fn test_scan_line() {
-        let line = "RRRRIICCFF";
-        let mut iter = extract_ranges(line);
-        assert_eq!(iter.next(), Some(PlotSegment('R', 0..4)));
-        assert_eq!(iter.next(), Some(PlotSegment('I', 4..6)));
-        assert_eq!(iter.next(), Some(PlotSegment('C', 6..8)));
-        assert_eq!(iter.next(), Some(PlotSegment('F', 8..10)));
-        assert_eq!(iter.next(), None);
     }
 }
