@@ -64,21 +64,13 @@ impl Plot {
             // sum non-overlapping units of current raw against above and below segment lines
             let new_sum = sum + current_row.clone()
                 .map(|(_, seg)| {
-                    // count overlapping units above the line
-                    let above = above_row.clone()
-                        .filter(|(_,nseg)| nseg.is_overlapping(seg))
-                        .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
-                        .sum::<usize>();
-
-                    // count overlapping units under the line
-                    let below = below_row.clone()
-                        .filter(|(_,nseg)| nseg.is_overlapping(seg))
-                        .map(|(_,nseg)| nseg.get_overlap(seg) as usize)
-                        .sum::<usize>();
-
                     // non-overlapping  = (segment length - above overlaping units) + (segment length - above overlaping units) =>
                     // non-overlapping = 2 * segment lengths - above - below overlapping units
-                    2 * seg.len() as usize - above - below
+                    2 * seg.len() as usize
+                    // count overlapping units above the line
+                        - seg.count_horizontal_edges(above_row.clone())
+                    // count overlapping units under the line
+                        - seg.count_horizontal_edges(below_row.clone())
                 })
                 .sum::<usize>();
 

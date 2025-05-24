@@ -34,6 +34,13 @@ impl PlotSegment {
         let end = self.end().min(other.end());
         end - start
     }
+    pub(super) fn count_horizontal_edges<'a>(&self, row_segs: impl Iterator<Item = &'a (usize, PlotSegment)>) -> usize {
+        row_segs
+            .take_while(|(_,nseg)| nseg.1.start < self.1.end)
+            .filter(|(_,nseg)| nseg.is_overlapping(self))
+            .map(|(_,nseg)| nseg.get_overlap(self) as usize)
+            .sum::<usize>()
+    }
 }
 
 impl PartialOrd for PlotSegment {

@@ -2,6 +2,8 @@ mod segment;
 mod plot;
 mod garden;
 
+use std::time;
+
 use garden::Garden;
 
 fn main() {
@@ -15,19 +17,20 @@ fn main() {
 
     let garden = Garden::parse_garden(&input);
 
+    let t = time::Instant::now();
     let total = garden
         .iter()
-        .inspect(|(id, plot)| println!("ID:{id}\n{plot:?}"))
+        // .inspect(|(id, plot)| println!("ID:{id}\n{plot:?}"))
         .map(|(_,v)|
             (v.area(), v.perimeter())
         )
         .map(|(a,b)| {
-            println!("area: {} * perimeter: {} = {}\n", a, b, a * b);
+            // println!("area: {} * perimeter: {} = {}\n", a, b, a * b);
             a * b
         })
         .sum::<usize>();
 
     println!("{:?}", &garden);
-    println!("Garden total cost : {total}");
-    //assert_eq!(total, 1533024)
+    println!("Garden total cost : {total} = {:?}", t.elapsed());
+    assert_eq!(total, 1533024)
 }

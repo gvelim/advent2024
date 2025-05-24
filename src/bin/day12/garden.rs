@@ -189,7 +189,7 @@ impl Debug for Garden {
 
         let mut thread = rng();
         let color_map = segments
-            .clone()
+            // .clone()
             .iter()
             .map(|&(_,(seg,&p_id))|
                 (
@@ -240,6 +240,7 @@ impl LastGardenScanLine {
     fn overlaps(&self, segment: &PlotSegment) -> Vec<(usize,usize)> {
         self.segments
             .iter()
+            .take_while(|(lseg,_,_)| segment.end() > lseg.start())
             .enumerate()
             .filter_map(|(i, (aseg, id, _))|
                 if aseg.plant() == segment.plant() &&
