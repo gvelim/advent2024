@@ -49,15 +49,14 @@ impl Debug for Garden {
 
         let mut thread = rng();
         let color_map = segments
-            // .clone()
             .iter()
-            .map(|&(_,(seg,&p_id))|
+            .map(|&(_,(_,&p_id))|
                 (
                     p_id,
                     (
-                        thread.random_range(0x07..=0x7F) ^ seg.plant() as u8,
-                        thread.random_range(0x07..=0x7F) ^ seg.plant() as u8,
-                        thread.random_range(0x07..=0x7F) ^ seg.plant() as u8
+                        thread.random_range(0x07..=0x7F),
+                        thread.random_range(0x07..=0x7F),
+                        thread.random_range(0x07..=0x7F)
                     )
                 )
             )

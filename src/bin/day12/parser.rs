@@ -6,7 +6,7 @@ use super::plot::Plot;
 use advent2024::id_generator;
 
 #[derive(Debug,Default)]
-pub(super) struct LastGardenScanLine {
+struct LastGardenScanLine {
     segments: Vec<(PlotSegment, usize, bool)>,
 }
 
@@ -24,9 +24,9 @@ impl LastGardenScanLine {
             .iter()
             .take_while(|(lseg,_,_)| segment.end() > lseg.start())
             .enumerate()
-            .filter_map(|(i, (aseg, id, _))|
+            .filter_map(|(idx, (aseg, id, _))|
                 if aseg.plant() == segment.plant() &&
-                    aseg.is_overlapping(segment) { Some((i,*id)) } else { None }
+                    aseg.is_overlapping(segment) { Some((idx,*id)) } else { None }
             )
             .collect::<Vec<_>>()
     }
