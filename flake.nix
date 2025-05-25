@@ -2,7 +2,7 @@
     description = "My very first rust environment flake";
 
     inputs = {
-        nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+        nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     };
 
     outputs = {self, nixpkgs} : {
