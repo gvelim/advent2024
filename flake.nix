@@ -21,7 +21,7 @@
                     ];
                 shellHook = ''
                     echo "Welcome to the Advent2024 development environment!"
-                    /Applications/Zed.app/Contents/MacOS/zed .
+                    /Applications/Zed.app/Contents/MacOS/zed . &
                 '';
                 };
             };
