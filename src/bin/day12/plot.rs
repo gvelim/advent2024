@@ -64,7 +64,7 @@ impl Plot {
             // sum non-overlapping units of current raw against above and below segment lines
             let new_sum = sum + current_row.clone()
                 .map(|(_, seg)| {
-                    // non-overlapping  = (segment length - above overlaping units) + (segment length - above overlaping units) =>
+                    // non-overlapping  = (segment length - above overlaping units) + (segment length - below overlaping units) =>
                     // non-overlapping = 2 * segment lengths - above - below overlapping units
                     2 * seg.len() as usize
                     // count overlapping units above the line
@@ -129,6 +129,3 @@ impl Debug for Plot {
         Ok(())
     }
 }
-
-
-

@@ -85,7 +85,7 @@ fn process_line(
 ) -> (BTreeMap<usize, Plot>, LastGardenScanLine)
 {
     let mut new_g_line = LastGardenScanLine::default();
-    // println!("In: {input}\n{:?}",g_line);
+
     // for each plant segment
     let (mut plots, mut g_line) = extract_ranges(input)
         .fold(
@@ -127,11 +127,10 @@ fn process_line(
             }
         );
 
-    // println!("WIP: {:?}",g_line);
     // Any scanline segments that didn't match indicate the end of plot region
     // therefore we move such segments to the garden map using their respective plot ID and current line number
     push_segments(&mut plots, g_line.drain_unmatched(), line);
-    // println!("New: {:?}\n",new_g_line);
+
     (plots, new_g_line)
 }
 
