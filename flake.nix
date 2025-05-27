@@ -49,6 +49,11 @@
                 }
             );
         };
+    platforms = [
+        "aarch64-darwin"
+        "x86_64-darwin"
+        "x86_64-linux"
+    ];
     in
     {
         # Generate development shells for specified platforms.
@@ -62,18 +67,8 @@
         #   aarch64-darwin = { default = <aarch64-darwin dev shell>; };
         #   x86_64-darwin = { default = <x86_64-darwin dev shell>; };
         # }
-        devShells = nixpkgs.lib.genAttrs [
-            "aarch64-darwin"
-            "x86_64-darwin"
-            "x86_64-linux"
-        ]  build_DevShell;
-        packages = nixpkgs.lib.genAttrs [
-            "aarch64-darwin"
-            "x86_64-darwin"
-            "x86_64-linux"
-            # You might want to add "x86_64-linux" here if you target Linux too
-          ] (
-            platform :
+        devShells = nixpkgs.lib.genAttrs platforms  build_DevShell;
+        packages = nixpkgs.lib.genAttrs platforms (platform :
             let
               pkgs = nixpkgs.legacyPackages.${platform};
             in
