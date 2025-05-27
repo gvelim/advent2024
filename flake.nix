@@ -28,7 +28,7 @@
             # Dynamically determine the Rust system string (architecture-os) for the current system
             export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/${RUSTC_VERSION}-${target}/bin/
             echo "Welcome to the Advent2024 development environment!"
-            /Applications/Zed.app/Contents/MacOS/zed . &
+            # /Applications/Zed.app/Contents/MacOS/zed . &
         '';
 
     };
@@ -65,6 +65,43 @@
         devShells = nixpkgs.lib.genAttrs [
             "aarch64-darwin"
             "x86_64-darwin"
+            "x86_64-linux"
         ]  build_DevShell;
+        packages = nixpkgs.lib.genAttrs [
+            "aarch64-darwin"
+            "x86_64-darwin"
+            "x86_64-linux"
+            # You might want to add "x86_64-linux" here if you target Linux too
+          ] (
+            platform :
+            let
+              pkgs = nixpkgs.legacyPackages.${platform};
+            in
+            {
+              # Define your Rust application package here
+              # We'll call the Nix package 'advent2024-solutions' as it contains multiple solutions
+              advent2024-solutions = pkgs.rustPlatform.buildRustPackage {
+                    pname = "advent2024-solutions";
+                    version = "0.1";
+                    # The source code for your Rust project.
+                    # 'self' refers to the root of your flake.
+                    # This assumes your Cargo.toml is directly in the flake root.
+                    src = self;
+
+                    # This is CRUCIAL for reproducible Rust builds.
+                    # It tells Nix to use your project's Cargo.lock file.
+                    cargoLock = {
+                        lockFile = ./Cargo.lock;
+                    };
+
+                    # You can add build flags here, e.g., for release builds
+                    # cargoBuildFlags = "--release";
+
+                    # This tells cargo install to install ALL binaries defined in src/bin/*
+                    # by building the project from the current source path (.).
+                    # cargoInstallFlags = "--path .";
+                };
+            }
+        );
     };
 }
