@@ -90,16 +90,14 @@
 
                     # This is CRUCIAL for reproducible Rust builds.
                     # It tells Nix to use your project's Cargo.lock file.
-                    cargoLock = {
-                        lockFile = ./Cargo.lock;
-                    };
+                    cargoLock = { lockFile = self + "/Cargo.lock"; };
 
                     # You can add build flags here, e.g., for release builds
-                    # cargoBuildFlags = "--release";
+                    cargoBuildFlags = "--release";
 
                     # This tells cargo install to install ALL binaries defined in src/bin/*
                     # by building the project from the current source path (.).
-                    # cargoInstallFlags = "--path .";
+                    cargoInstallFlags = "--path .";
                 };
             }
         );
