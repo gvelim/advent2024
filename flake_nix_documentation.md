@@ -86,7 +86,7 @@ This line demonstrates reading a configuration file from the project itself.
             # Dynamically determine the Rust system string (architecture-os) for the current system
             export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/${RUSTC_VERSION}-${target}/bin/
             echo "Welcome to the Advent2024 development environment!"
-            /Applications/Zed.app/Contents/MacOS/zed . &
+            # /Applications/Zed.app/Contents/MacOS/zed . &
         '';
 
     };
@@ -135,21 +135,23 @@ This function, `build_DevShell`, also in the `let` block, is designed to create 
 #### `devShells`
 
 ```nix
-        devShells = nixpkgs.lib.genAttrs [\n            "aarch64-darwin"\n            "x86_64-darwin"\n        ]  build_DevShell;
+        devShells = nixpkgs.lib.genAttrs platforms  build_DevShell;
 ```
 This is a key output attribute of the flake, named `devShells`. This attribute is expected to contain development environments.
 *   `nixpkgs.lib.genAttrs`: This is a useful Nixpkgs library function. It takes a list of names (here, platform strings) and a function. It calls the function for each name in the list and creates an attribute set where the keys are the names from the list, and the values are the results of calling the function with that name.
-*   `[ "aarch64-darwin" "x86_64-darwin" ]`: This is the list of platforms for which we want to generate development shells.
-*   `build_DevShell`: This is the function we defined earlier. `genAttrs` will call `build_DevShell` once with `"aarch64-darwin"` and once with `"x86_64-darwin"`.
+*   `platforms = [ "aarch64-darwin" "x86_64-darwin" "x86_64-linux" ]`: This local variable defines the list of platforms for which we want to generate outputs (both development shells and packages).
+*   `nixpkgs.lib.genAttrs platforms build_DevShell;`: This uses the `genAttrs` function to iterate over the `platforms` list and call `build_DevShell` for each one.
+*   `build_DevShell`: This is the function we defined earlier. `genAttrs` will call `build_DevShell` once for each platform in the `platforms` list.
 
 The result of this `genAttrs` call will be an attribute set structure like this:
 ```nix
 {
   aarch64-darwin = { default = <the dev shell for aarch64-darwin>; };
   x86_64-darwin = { default = <the dev shell for x86_64-darwin>; };
+  x86_64-linux = { default = <the dev shell for x86_64-linux>; };
 }
 ```
-This structure tells Nix that this flake provides a default development shell for both `aarch64-darwin` and `x86_64-darwin` systems.
+This structure tells Nix that this flake provides a default development shell for the specified systems.
 
 ### How to Use This Flake
 
@@ -162,6 +164,58 @@ nix develop
 Nix will automatically detect the `flake.nix` file, resolve the `nixpkgs` input, build the development shell for your current system's architecture (if it's one of the supported ones), install `rustup` via Nix, and drop you into a shell. The `shellHook` will execute, installing the Rust toolchain specified in `rust-toolchain.toml` using `rustup` (if not already cached), setting up your `PATH` to use that toolchain, printing the welcome message, and attempting to open Zed.
 
 When you exit the shell, your environment returns to its normal state, demonstrating the isolated nature of the Nix development environment.
+
+### Reproduceable Builds
+
+```nix
+        packages = nixpkgs.lib.genAttrs platforms (platform :
+            let
+              pkgs = nixpkgs.legacyPackages.${platform};
+            in
+            {
+              # Define your Rust application package here
+              # We'll call the Nix package 'advent2024-solutions' as it contains multiple solutions
+              advent2024-solutions = pkgs.rustPlatform.buildRustPackage {
+                    pname = "advent2024-solutions";
+                    version = "0.1";
+                    # The source code for your Rust project.
+                    # 'self' refers to the root of your flake.
+                    # This assumes your Cargo.toml is directly in the flake root.
+                    src = self;
+
+                    # This is CRUCIAL for reproducible Rust builds.
+                    # It tells Nix to use your project's Cargo.lock file.
+                    cargoLock = { lockFile = self + "/Cargo.lock"; };
+
+                    # You can add build flags here, e.g., for release builds
+                    # cargoBuildFlags = "--release";
+
+                    # This tells cargo install to install ALL binaries defined in src/bin/*
+                    # by building the project from the current source path (.).
+                    cargoInstallFlags = "--path .";
+                };
+            }
+        );
+```
+This is another key output attribute, named `packages`. This attribute is expected to contain packages that can be built and installed from your project.
+*   `nixpkgs.lib.genAttrs platforms (...)`: Similar to `devShells`, `genAttrs` is used here to generate packages for each `platform` defined in the `platforms` variable. The function passed to `genAttrs` takes a `platform` string and returns an attribute set containing the packages for that platform.
+*   `let pkgs = nixpkgs.legacyPackages.${platform}; in ...`: Inside the function for each platform, we get the platform-specific Nixpkgs set.
+*   `advent2024-solutions = pkgs.rustPlatform.buildRustPackage { ... };`: This defines a package named `advent2024-solutions`. `pkgs.rustPlatform.buildRustPackage` is a Nixpkgs function specifically designed for building Rust projects using Cargo. It handles fetching dependencies, building, and installing the project.
+    *   `pname = "advent2024-solutions";`: The package name.
+    *   `version = "0.1";`: The package version.
+    *   `src = self;`: Specifies the source code for the package. `self` refers to the root of the current flake, meaning Nix will build the project from the files in your `advent2024` directory.
+    *   `cargoLock = { lockFile = self + "/Cargo.lock"; };`: **This is crucial for reproducibility.** It tells Nix to use the `Cargo.lock` file located at the flake\'s root (`self + "/Cargo.lock"`) to ensure the exact same dependency versions are used every time the package is built.
+    *   `cargoInstallFlags = "--path .";`: This argument is passed directly to the `cargo install` command during the build process. `--path .` tells Cargo to install binaries from the package located at the current source path (which is the flake root, `self`). If you have multiple binaries defined in `src/bin/`, this will build and install all of them into the package\'s output.
+
+The result of this `genAttrs` call will be an attribute set structure like this:
+```nix
+{
+  aarch64-darwin = { advent2024-solutions = <aarch64-darwin package>; };
+  x86_64-darwin = { advent2064-solutions = <x86_64-darwin package>; };
+  x86_64-linux = { advent2064-solutions = <x86_64-linux package>; };
+}
+```
+You can build this package for your system by running `nix build .#advent2024-solutions`. The resulting executable(s) will be symlinked into `./result/bin/`.
 
 ### Benefits of This Setup
 
