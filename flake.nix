@@ -93,7 +93,7 @@
                     cargoLock = { lockFile = self + "/Cargo.lock"; };
 
                     # You can add build flags here, e.g., for release builds
-                    cargoBuildFlags = "--release";
+                    # cargoBuildFlags = "--release";
 
                     # This tells cargo install to install ALL binaries defined in src/bin/*
                     # by building the project from the current source path (.).
