@@ -153,49 +153,40 @@ The result of this `genAttrs` call will be an attribute set structure like this:
 ```
 This structure tells Nix that this flake provides a default development shell for the specified systems.
 
-### How to Use This Flake
 
-With this `flake.nix` file and a `rust-toolchain.toml` file specifying your desired Rust version in the root of your `advent2024` project directory, you can enter the defined development environment by simply running:
 
-```bash
-nix develop
-```
-
-Nix will automatically detect the `flake.nix` file, resolve the `nixpkgs` input, build the development shell for your current system's architecture (if it's one of the supported ones), install `rustup` via Nix, and drop you into a shell. The `shellHook` will execute, installing the Rust toolchain specified in `rust-toolchain.toml` using `rustup` (if not already cached), setting up your `PATH` to use that toolchain, printing the welcome message, and attempting to open Zed.
-
-When you exit the shell, your environment returns to its normal state, demonstrating the isolated nature of the Nix development environment.
 
 ### Reproduceable Builds
 
 ```nix
-        packages = nixpkgs.lib.genAttrs platforms (platform :
-            let
-              pkgs = nixpkgs.legacyPackages.${platform};
-            in
-            {
-              # Define your Rust application package here
-              # We'll call the Nix package 'advent2024-solutions' as it contains multiple solutions
-              advent2024-solutions = pkgs.rustPlatform.buildRustPackage {
-                    pname = "advent2024-solutions";
-                    version = "0.1";
-                    # The source code for your Rust project.
-                    # 'self' refers to the root of your flake.
-                    # This assumes your Cargo.toml is directly in the flake root.
-                    src = self;
+packages = nixpkgs.lib.genAttrs platforms (platform :
+    let
+        pkgs = nixpkgs.legacyPackages.${platform};
+    in
+    {
+        # Define your Rust application package here
+        # We'll call the Nix package 'advent2024-solutions' as it contains multiple solutions
+        advent2024-solutions = pkgs.rustPlatform.buildRustPackage {
+            pname = "advent2024-solutions";
+            version = "0.1";
+            # The source code for your Rust project.
+            # 'self' refers to the root of your flake.
+            # This assumes your Cargo.toml is directly in the flake root.
+            src = self;
 
-                    # This is CRUCIAL for reproducible Rust builds.
-                    # It tells Nix to use your project's Cargo.lock file.
-                    cargoLock = { lockFile = self + "/Cargo.lock"; };
+            # This is CRUCIAL for reproducible Rust builds.
+            # It tells Nix to use your project's Cargo.lock file.
+            cargoLock = { lockFile = self + "/Cargo.lock"; };
 
-                    # You can add build flags here, e.g., for release builds
-                    # cargoBuildFlags = "--release";
+            # You can add build flags here, e.g., for release builds
+            # cargoBuildFlags = "--release";
 
-                    # This tells cargo install to install ALL binaries defined in src/bin/*
-                    # by building the project from the current source path (.).
-                    cargoInstallFlags = "--path .";
-                };
-            }
-        );
+            # This tells cargo install to install ALL binaries defined in src/bin/*
+            # by building the project from the current source path (.).
+            cargoInstallFlags = "--path .";
+        };
+    }
+);
 ```
 This is another key output attribute, named `packages`. This attribute is expected to contain packages that can be built and installed from your project.
 *   `nixpkgs.lib.genAttrs platforms (...)`: Similar to `devShells`, `genAttrs` is used here to generate packages for each `platform` defined in the `platforms` variable. The function passed to `genAttrs` takes a `platform` string and returns an attribute set containing the packages for that platform.
@@ -211,11 +202,31 @@ The result of this `genAttrs` call will be an attribute set structure like this:
 ```nix
 {
   aarch64-darwin = { advent2024-solutions = <aarch64-darwin package>; };
-  x86_64-darwin = { advent2064-solutions = <x86_64-darwin package>; };
-  x86_64-linux = { advent2064-solutions = <x86_64-linux package>; };
+  x86_64-darwin = { advent2024-solutions = <x86_64-darwin package>; };
+  x86_64-linux = { advent2024-solutions = <x86_64-linux package>; };
 }
 ```
 You can build this package for your system by running `nix build .#advent2024-solutions`. The resulting executable(s) will be symlinked into `./result/bin/`.
+
+Now that you understand how reproducible packages are defined and built, let's look at how to interact with this flake, including using the development environment.
+
+### How to Use This Flake
+
+With this `flake.nix` file and a `rust-toolchain.toml` file specifying your desired Rust version in the root of your `advent2024` project directory, you can enter the defined development environment by simply running:
+
+```bash
+nix develop
+```
+
+Nix will automatically detect the `flake.nix` file, resolve the `nixpkgs` input, build the development shell for your current system's architecture (if it's one of the supported ones), install `rustup` via Nix, and drop you into a shell. The `shellHook` will execute, installing the Rust toolchain specified in `rust-toolchain.toml` using `rustup` (if not already cached), setting up your `PATH` to use that toolchain, printing the welcome message, and attempting to open Zed.
+
+When you exit the shell, your environment returns to its normal state, demonstrating the isolated nature of the Nix development environment.
+
+This flake not only provides a development environment but also defines reproducible builds for the project's packages. As explained in the "Reproducible Builds" section, you can build the package for your system using commands such as:
+
+```bash
+nix build .#advent2024-solutions
+```
 
 ### Benefits of This Setup
 
