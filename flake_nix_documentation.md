@@ -23,35 +23,37 @@ The entire `flake.nix` file is a Nix expression that evaluates to an attribute s
 ```
 The outer curly braces `{}` define this attribute set.
 
-#### `description`
+#### The "description" Attribute
 
 ```nix
-    description = "My very first rust environment flake";
+description = "My very first rust environment flake";
 ```
 This is a human-readable description of the flake. It helps identify the purpose of this flake file.
 
-#### `inputs`
+#### The "inputs" Attribute
 
 ```nix
-    inputs = {
-        nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    };
+inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+};
 ```
 The `inputs` section defines the dependencies that this flake needs. In this case, it depends on `nixpkgs`.
 *   `nixpkgs`: This is the name we give to this input within our flake.
 *   `url = "github:NixOS/nixpkgs/nixpkgs-unstable"`: This specifies where to fetch the input from. `github:NixOS/nixpkgs/nixpkgs-unstable` is a shorthand for the Nixpkgs repository on GitHub at the `nixpkgs-unstable` branch. Using a specific branch or commit hash is crucial for reproducibility, ensuring you get the exact same version of the Nix package collection every time you build. `nixpkgs-unstable` means we are tracking the latest development version of Nixpkgs, which provides very recent package versions, but can occasionally be less stable than a specific release branch.
 
-#### `outputs`
+#### The "outputs" Attribute
 
 ```nix
-    outputs = {self, nixpkgs} :
-    let
+outputs = {self, nixpkgs} :
+let
     overrides = builtins.fromTOML (builtins.readFile (self + "/rust-toolchain.toml"));
-    # ... rest of outputs ...
-    in
-    {
-      # ... devShells ...
-    };
+# ... rest of outputs ...
+in
+{
+    # ... devShells ...
+    # ... packages ...
+    # etc
+};
 ```
 The `outputs` section defines what the flake provides. It's a function that takes an attribute set of the resolved `inputs` as arguments.
 *   `self`: This refers to the flake itself. It allows outputs to refer to other outputs within the same flake, notably used here to read a file from the flake's source tree.
@@ -59,10 +61,10 @@ The `outputs` section defines what the flake provides. It's a function that take
 
 Inside the `outputs` function, there's a `let ... in ...` block. The `let` block defines local variables or functions that can be used within the `in` block. This is a common pattern in Nix for organizing code and avoiding repetition.
 
-#### Reading `rust-toolchain.toml`
+#### Reading "rust-toolchain.toml"
 
 ```nix
-    overrides = builtins.fromTOML (builtins.readFile (self + "/rust-toolchain.toml"));
+overrides = builtins.fromTOML (builtins.readFile (self + "/rust-toolchain.toml"));
 ```
 This line demonstrates reading a configuration file from the project itself.
 *   `self + "/rust-toolchain.toml"`: This constructs the path to the `rust-toolchain.toml` file within the flake's source directory.
@@ -70,28 +72,28 @@ This line demonstrates reading a configuration file from the project itself.
 *   `builtins.fromTOML (...)`: This Nix built-in function parses the string content (expected to be in TOML format) into a Nix attribute set.
 *   `overrides = ...`: The resulting attribute set is assigned to the local variable `overrides`. This makes the configuration from `rust-toolchain.toml` available for use within the flake's outputs.
 
-#### `mkShell_attrSet` Function
+#### "mkShell_attrSet" Function
 
 ```nix
-    mkShell_attrSet = {pkgs, target}: rec {
-        packages = with pkgs; [
-            rustup
-            nil
-            nixd
-            git
-        ];
-        RUSTC_VERSION = overrides.toolchain.channel;
-        shellHook = ''
-            export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
-            # Dynamically determine the Rust system string (architecture-os) for the current system
-            export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/${RUSTC_VERSION}-${target}/bin/
-            echo "Welcome to the Advent2024 development environment!"
-            # /Applications/Zed.app/Contents/MacOS/zed . &
-        '';
+mkShell_attrSet = {pkgs, target}: rec {
+    packages = with pkgs; [
+        rustup
+        nil
+        nixd
+        git
+    ];
+    RUSTC_VERSION = overrides.toolchain.channel;
+    shellHook = ''
+        export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
+        # Dynamically determine the Rust system string (architecture-os) for the current system
+        export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/${RUSTC_VERSION}-${target}/bin/
+        echo "Welcome to the Advent2024 development environment!"
+        # /Applications/Zed.app/Contents/MacOS/zed . &
+    '';
 
-    };
+};
 ```
-This function, `mkShell_attrSet` (previously `dev_shell_attrSet`), is defined within the `let` block. Its purpose is to create a standard configuration (an attribute set) that will be used to build a development shell.
+This function, `mkShell_attrSet`, is defined within the `let` block. Its purpose is to create a standard configuration (an attribute set) that will be used to build a development shell.
 *   `{pkgs, target}`: This function now takes an attribute set as an argument, destructuring it into `pkgs` (the Nixpkgs package set for a specific platform) and `target` (a string representing the target system architecture, e.g., `"aarch64-apple-darwin"`). This allows the function to be configured based on the specific shell being built.
 *   `packages`: This is a list of packages that will be made available in the development shell's environment.
     *   `with pkgs;`: This is Nix syntax that brings all packages from the `pkgs` set into the current scope, allowing us to refer to them directly by name (like `rustup`) instead of `pkgs.rustup`.
@@ -107,21 +109,21 @@ This function, `mkShell_attrSet` (previously `dev_shell_attrSet`), is defined wi
     *   `echo "Welcome to the Advent2024 development environment!"`: A simple message printed to the console.
     *   `/Applications/Zed.app/Contents/MacOS/zed . &`: This command opens the current directory in the Zed editor when the shell is loaded. The `&` runs the command in the background, so it doesn't block your shell. **Note:** This path assumes Zed is installed in the standard macOS Applications directory.
 
-#### `build_DevShell` Function
+#### "build_DevShell" Function
 
 ```nix
-    build_DevShell = platform :
-        let
-            pkgs = nixpkgs.legacyPackages.${platform};
-        in
-        {
-            default = pkgs.mkShell (
-                mkShell_attrSet {
-                    pkgs = pkgs;
-                    target = pkgs.stdenv.hostPlatform.config;
-                }
-            );
-        };
+build_DevShell = platform :
+    let
+        pkgs = nixpkgs.legacyPackages.${platform};
+    in
+    {
+        default = pkgs.mkShell (
+            mkShell_attrSet {
+                pkgs = pkgs;
+                target = pkgs.stdenv.hostPlatform.config;
+            }
+        );
+    };
 ```
 This function, `build_DevShell`, also in the `let` block, is designed to create a complete development shell output for a *specific* platform.
 *   `platform`: This argument takes a string representing the target system architecture for Nixpkgs (e.g., `"aarch64-darwin"` for Apple Silicon macOS, `"x86_64-darwin"` for Intel macOS).
@@ -132,10 +134,10 @@ This function, `build_DevShell`, also in the `let` block, is designed to create 
     *   `target = pkgs.stdenv.hostPlatform.config;`: The Rust target triplet string for the current platform (e.g., `"aarch64-apple-darwin"`, `"x86_64-apple-darwin"`). This is dynamically determined by Nixpkgs based on the `platform` input.
 *   `{ default = ...; }`: The function returns an attribute set with a single key, `default`. In the `devShells` section of a flake, the `default` key under a platform makes this shell the primary development environment for that platform.
 
-#### `devShells`
+#### The "devShells" Attribute
 
 ```nix
-        devShells = nixpkgs.lib.genAttrs platforms  build_DevShell;
+devShells = nixpkgs.lib.genAttrs platforms  build_DevShell;
 ```
 This is a key output attribute of the flake, named `devShells`. This attribute is expected to contain development environments.
 *   `nixpkgs.lib.genAttrs`: This is a useful Nixpkgs library function. It takes a list of names (here, platform strings) and a function. It calls the function for each name in the list and creates an attribute set where the keys are the names from the list, and the values are the results of calling the function with that name.
@@ -153,10 +155,7 @@ The result of this `genAttrs` call will be an attribute set structure like this:
 ```
 This structure tells Nix that this flake provides a default development shell for the specified systems.
 
-
-
-
-### Reproduceable Builds
+### Reproduceable Builds: "packages" Attribute
 
 ```nix
 packages = nixpkgs.lib.genAttrs platforms (platform :
