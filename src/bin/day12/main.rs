@@ -30,7 +30,10 @@ fn main() {
         })
         .sum::<usize>();
 
+    let el_puzzle = t.elapsed();
     println!("{:?}", &garden);
-    println!("Garden total cost : {total} = {:?}", t.elapsed());
+    let el_debug = t.elapsed();
+    println!("Garden total cost : {total} = {el_puzzle:?}");
+    println!("Rendered Garden in {el_debug:?}");
     assert_eq!(total, 1533024)
 }

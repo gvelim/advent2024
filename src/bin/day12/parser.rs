@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Index;
 use super::segment::{PlotSegment, Seed};
@@ -68,7 +68,7 @@ pub(super) fn extract_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
 }
 
 
-fn push_segments(plots: &mut BTreeMap<usize, Plot>, g_line: impl Iterator<Item = (PlotSegment, usize, bool)>, line: usize) {
+fn push_segments(plots: &mut HashMap<usize, Plot>, g_line: impl Iterator<Item = (PlotSegment, usize, bool)>, line: usize) {
     g_line
         .for_each(|(seg, id, _)| {
             plots.entry(id).or_default().insert(line-1, seg);
@@ -78,11 +78,11 @@ fn push_segments(plots: &mut BTreeMap<usize, Plot>, g_line: impl Iterator<Item =
 // for each new segment identify the plot that is overlapping with and assign the segment the plot's ID
 fn process_line(
     input: &str,
-    plots: BTreeMap<usize, Plot>,
+    plots: HashMap<usize, Plot>,
     g_line: LastGardenScanLine,
     mut get_plot_id: impl FnMut() -> usize,
     line: usize
-) -> (BTreeMap<usize, Plot>, LastGardenScanLine)
+) -> (HashMap<usize, Plot>, LastGardenScanLine)
 {
     let mut new_g_line = LastGardenScanLine::default();
 
@@ -142,11 +142,11 @@ fn process_line(
 // We return a list of depracated plot IDs for post-processing
 fn process_segment(
     segment: &PlotSegment,
-    plots: BTreeMap<usize, Plot>,
+    plots: HashMap<usize, Plot>,
     g_line: LastGardenScanLine,
     line: usize,
     mut get_plot_id: impl FnMut() -> usize
-) -> (BTreeMap<usize, Plot>, LastGardenScanLine, usize, Option<Vec<usize>>)
+) -> (HashMap<usize, Plot>, LastGardenScanLine, usize, Option<Vec<usize>>)
     {
         // find active plots matching this segment
         // matching = (a) overlapping with && (b) have same plant type
@@ -189,7 +189,7 @@ fn process_segment(
 // garden is a collection of plots expressed by a 1 or more overlapping vertical segments
 // parser extracts and composes plots per scanline
 // a plot is composed out of multiple scanlines
-pub fn parse_plots(input: &str) -> BTreeMap<usize,Plot> {
+pub fn parse_plots(input: &str) -> HashMap<usize,Plot> {
     // id generator fn()
     let mut get_new_plot_id = id_generator(0);
     // line counter
@@ -197,7 +197,7 @@ pub fn parse_plots(input: &str) -> BTreeMap<usize,Plot> {
 
     let (mut plots, mut g_line) = input
         .lines()
-        .fold((BTreeMap::<usize, Plot>::new(), LastGardenScanLine::default()), |(plots, g_line), input| {
+        .fold((HashMap::<usize, Plot>::new(), LastGardenScanLine::default()), |(plots, g_line), input| {
             process_line(
                 input,
                 plots,

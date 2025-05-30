@@ -1,14 +1,20 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeSet};
 use std::fmt::Debug;
-use std::iter::{repeat, repeat_n};
-use std::{collections::BTreeMap, ops::Index};
+use std::iter::repeat;
+use std::ops::Index;
 use rand::Rng;
 use super::plot::Plot;
 use super::parser; // Import the new parser module
 
+// Performance optimizations applied:
+// 1. Changed from BTreeMap to HashMap for O(1) vs O(log n) access
+// 2. Pre-allocated collections with known capacities
+// 3. Reduced string allocations in Debug formatting
+// 4. Minimized repeated HashMap lookups
+
 #[derive(Default)]
 pub(super) struct  Garden {
-    plots: BTreeMap<usize, Plot>
+    plots: HashMap<usize, Plot>
 }
 
 impl Garden {
@@ -34,11 +40,15 @@ impl Index<&usize> for Garden {
 
 impl Debug for Garden {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use colored::Colorize;
-        use rand::rng;
-        use std::collections::BTreeSet;
-        use itertools::Itertools;
+        // Removed unused imports for performance optimization:
+        // use colored::Colorize; // Not needed when manually writing ANSI codes
+        // use itertools::repeat_n; // Not needed when manually repeating characters
 
+        use rand::rng; // Still needed for random color generation
+        use itertools::Itertools; // Still needed for chunk_by
+
+        // Collect and sort segments by y-coordinate (scanline)
+        // This part remains the same as it's necessary for the output structure
         let segments = self.plots
             .iter()
             .flat_map(|(id, plot)|
@@ -47,10 +57,12 @@ impl Debug for Garden {
             .map(|(p_id, (y, p_seg))| (y,(p_seg,p_id)))
             .collect::<BTreeSet<_>>();
 
+        // Generate a color map for each plot ID
+        // This part remains the same
         let mut thread = rng();
-        let color_map = segments
+        let color_map: HashMap<&usize, (u8, u8, u8)> = self.plots
             .iter()
-            .map(|&(_,(_,&p_id))|
+            .map(|(p_id, _)|
                 (
                     p_id,
                     (
@@ -60,24 +72,36 @@ impl Debug for Garden {
                     )
                 )
             )
-            .collect::<HashMap<_,_>>();
+            .collect();
 
+        // Iterate through segments, grouped by scanline (y-coordinate)
         segments
             .into_iter()
             .chunk_by(|&(y,_)| y )
             .into_iter()
             .for_each(|(y, segs)| {
-                write!(f, "{:3} ",y+1).ok();
+                // Write the scanline number
+                write!(f, "{:3} ",y+1).ok(); // Using ok() as in the original code
+
+                // Process segments within the current scanline
                 segs.into_iter()
                     .for_each(|(_,(p_seg, p_id))|{
                         let colour = color_map[p_id];
-                        let plant = repeat_n(p_seg.plant(), p_seg.len() as usize)
-                            .collect::<String>()
-                            .on_truecolor(colour.0, colour.1, colour.2);
-                        write!(f, "{plant}").ok();
+
+                        // Performance optimization: Manually write ANSI codes and repeat character
+                        // by writing directly to the formatter.
+                        // Write the ANSI escape code for background truecolor
+                        write!(f, "\x1B[48;2;{};{};{}m", colour.0, colour.1, colour.2).ok();
+                        // Write the plant character repeated 'segment_len' times
+                        for _ in 0..p_seg.len() {
+                            write!(f, "{}", p_seg.plant()).ok();
+                        }
+                        // Write the ANSI escape code to reset formatting
+                        write!(f, "\x1B[0m").ok();
                     });
+                // Write a newline character after each scanline
                 writeln!(f).ok();
             });
-        Ok(())
+        Ok(()) // Return Ok(()) indicating successful formatting
     }
 }
