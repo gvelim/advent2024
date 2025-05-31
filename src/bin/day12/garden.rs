@@ -95,11 +95,11 @@ impl Debug for Garden {
                 for _ in 0..p_seg.len() {
                     write!(f, "{}", plant_char)?;
                 }
-                // Write the ANSI escape code to reset text attributes (back to default).
-                write!(f, "\x1B[0m")?;
             }
-            // After processing all segments for a scanline, write a newline character.
-            writeln!(f)?;
+            // After processing all segments for a scanline,
+            // Write the ANSI escape code to reset text attributes (back to default)
+            // and add a new line
+            writeln!(f, "\x1B[0m")?;
         }
         // Return Ok(()) to indicate successful formatting.
         Ok(())
