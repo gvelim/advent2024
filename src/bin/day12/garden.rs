@@ -1,8 +1,6 @@
 use std::collections::{HashMap, BTreeSet};
 use std::fmt::Debug;
-use std::iter::repeat;
 use std::ops::Index;
-use rand::Rng;
 use super::plot::Plot;
 use super::parser; // Import the new parser module
 
@@ -40,68 +38,70 @@ impl Index<&usize> for Garden {
 
 impl Debug for Garden {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Removed unused imports for performance optimization:
-        // use colored::Colorize; // Not needed when manually writing ANSI codes
-        // use itertools::repeat_n; // Not needed when manually repeating characters
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        use itertools::Itertools;
 
-        use rand::rng; // Still needed for random color generation
-        use itertools::Itertools; // Still needed for chunk_by
-
-        // Collect and sort segments by y-coordinate (scanline)
-        // This part remains the same as it's necessary for the output structure
+        // Collect all segments from all plots into a BTreeSet.
+        // This flattens the data structure and sorts segments primarily by y-coordinate
+        // and secondarily by segment start, which is crucial for the debug output
+        // to be rendered scanline by scanline and segments within a scanline
+        // in order.
         let segments = self.plots
             .iter()
             .flat_map(|(id, plot)|
-                repeat(id).zip(plot.iter())
+                // For each plot, associate its ID with each of its segments so we can colour it correctly.
+                std::iter::repeat(id).zip(plot.iter())
             )
+            // Reformat the tuple to prioritize y-coordinate for sorting by BTreeSet.
             .map(|(p_id, (y, p_seg))| (y,(p_seg,p_id)))
+            // Collect into a BTreeSet to automatically sort the segments.
             .collect::<BTreeSet<_>>();
 
-        // Generate a color map for each plot ID
-        // This part remains the same
-        let mut thread = rng();
-        let color_map: HashMap<&usize, (u8, u8, u8)> = self.plots
-            .iter()
-            .map(|(p_id, _)|
-                (
-                    p_id,
-                    (
-                        thread.random_range(0x07..=0x7F),
-                        thread.random_range(0x07..=0x7F),
-                        thread.random_range(0x07..=0x7F)
-                    )
-                )
+        // Define a closure to generate a deterministic color based on the plot ID.
+        // This ensures that the same plot ID always gets the same color across runs,
+        // making the debug output more consistent and easier to follow.
+        let get_color = |p_id: &usize| -> (u8, u8, u8) {
+            let mut hasher = DefaultHasher::new();
+            // Hash the plot ID.
+            p_id.hash(&mut hasher);
+            let hash = hasher.finish();
+            // Extract R, G, B components from the hash value.
+            (
+                ((hash >> 16) & 0xFF) as u8, // Red component from bits 16-23
+                ((hash >> 8) & 0xFF) as u8,  // Green component from bits 8-15
+                (hash & 0xFF) as u8,         // Blue component from bits 0-7
             )
-            .collect();
+        };
 
-        // Iterate through segments, grouped by scanline (y-coordinate)
-        segments
-            .into_iter()
-            .chunk_by(|&(y,_)| y )
-            .into_iter()
-            .for_each(|(y, segs)| {
-                // Write the scanline number
-                write!(f, "{:3} ",y+1).ok(); // Using ok() as in the original code
+        // Iterate through the collected segments, grouping them by their y-coordinate (scanline).
+        // `chunk_by` from `itertools` is used to create these groups efficiently.
+        // The output includes ANSI escape codes for background colors to visualize plots.
+        for (y, segs) in segments.into_iter().chunk_by(|&(y,_)| y).into_iter() {
+            // Write the scanline number (y + 1 because y is 0-indexed).
+            // Use {:3} for fixed-width alignment. Handle potential write errors.
+            write!(f, "{:3} ", y + 1)?;
 
-                // Process segments within the current scanline
-                segs.into_iter()
-                    .for_each(|(_,(p_seg, p_id))|{
-                        let colour = color_map[p_id];
+            // Iterate through segments belonging to the current scanline.
+            for (_, (p_seg, p_id)) in segs {
+                // Get the deterministic color for the plot ID.
+                let (r, g, b) = get_color(p_id);
+                // Get the plant character for the segment.
+                let plant_char = p_seg.plant();
 
-                        // Performance optimization: Manually write ANSI codes and repeat character
-                        // by writing directly to the formatter.
-                        // Write the ANSI escape code for background truecolor
-                        write!(f, "\x1B[48;2;{};{};{}m", colour.0, colour.1, colour.2).ok();
-                        // Write the plant character repeated 'segment_len' times
-                        for _ in 0..p_seg.len() {
-                            write!(f, "{}", p_seg.plant()).ok();
-                        }
-                        // Write the ANSI escape code to reset formatting
-                        write!(f, "\x1B[0m").ok();
-                    });
-                // Write a newline character after each scanline
-                writeln!(f).ok();
-            });
-        Ok(()) // Return Ok(()) indicating successful formatting
+                // Write the ANSI escape code to set the background color using 24-bit color (48;2;R;G;B).
+                write!(f, "\x1B[48;2;{};{};{}m", r, g, b)?;
+                // Write the plant character repeatedly for the length of the segment.
+                for _ in 0..p_seg.len() {
+                    write!(f, "{}", plant_char)?;
+                }
+                // Write the ANSI escape code to reset text attributes (back to default).
+                write!(f, "\x1B[0m")?;
+            }
+            // After processing all segments for a scanline, write a newline character.
+            writeln!(f)?;
+        }
+        // Return Ok(()) to indicate successful formatting.
+        Ok(())
     }
 }
