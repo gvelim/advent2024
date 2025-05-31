@@ -35,7 +35,18 @@ Key methods implemented for `PlotSegment` include:
 pub(super) fn contains(&self, seed: Seed) -> bool {
     self.1.contains(&seed)
 }
-// ...
+pub(super) fn new(plant: char, range: Range<Seed>) -> Self {
+    PlotSegment(plant, range)
+}
+pub(super) fn plant(&self) -> char {
+    self.0
+}
+pub(super) fn start(&self) -> Seed {
+    self.1.start
+}
+pub(super) fn end(&self) -> Seed {
+    self.1.end
+}
 pub(super) fn len(&self) -> Seed {
     self.1.end as Seed - self.1.start as Seed
 }
@@ -48,13 +59,22 @@ pub(super) fn get_overlap(&self, other: &Self) -> Seed {
     let end = self.end().min(other.end());
     end - start
 }
+pub(super) fn count_horizontal_edges<'a>(&self, row_segs: impl Iterator<Item = &'a (usize, PlotSegment)>) -> usize {
+    row_segs
+        .take_while(|(_,nseg)| nseg.1.start < self.1.end)
+        .filter(|(_,nseg)| nseg.is_overlapping(self))
+        .map(|(_,nseg)| nseg.get_overlap(self) as usize)
+        .sum::<usize>()
+}
 ```
 
-These methods allow us to determine if a specific column is part of the segment, calculate its length, check for horizontal overlaps with other segments, and quantify the degree of overlap. The `Ord` and `PartialOrd` implementations are crucial for sorting `PlotSegment`s, particularly when stored in ordered collections like `BTreeSet`.
+These methods provide the core functionality for working with horizontal segments: checking if a specific column is within the segment (`contains`), creating a new segment (`new`), accessing segment properties like plant type, start, and end columns (`plant`, `start`, `end`), calculating length (`len`), checking for overlaps (`is_overlapping`), quantifying overlap amount (`get_overlap`), and counting common horizontal edges relative to other segments in a row (`count_horizontal_edges`).
+
+Additionally, `PlotSegment` implements the `Debug` trait for easy visualization, and the `Ord` and `PartialOrd` traits, which are crucial for sorting segments. The `Ord` implementation sorts primarily by the segment's start column, then by its end column, which is necessary for storing and retrieving segments efficiently in ordered collections like `BTreeSet` within the `Plot` and `Garden` structures.
 
 ## 3. Step 2: Parsing Lines into Segments
 
-The raw input is a string containing many lines. We need to transform each line into a sequence of `PlotSegment`s.
+The process of parsing the garden layout from a raw string input into a structured `Garden` involves several steps, primarily handled within the `parser` module. The first step, within the parser, is to break down each individual line into horizontal segments using the `extract_ranges` function:
 
 ```rust
 pub(super) fn extract_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
@@ -64,14 +84,14 @@ pub(super) fn extract_ranges(line: &str) -> impl Iterator<Item = PlotSegment> {
         .map(move |chunk| {
             let start = idx;
             idx += chunk.len() as Seed;
-            PlotSegment(chunk[0] as char, start..idx)
+            PlotSegment::new(chunk[0] as char, start..idx)
         })
 }
 ```
 
-**Insight:** The `extract_ranges` function iterates through the bytes of a line, using the `chunk_by` iterator adapter from the `itertools` crate (implicitly used here, although `as_bytes().chunk_by` is a standard slice method) to group consecutive identical characters. For each chunk of identical characters, it creates a `PlotSegment` with the character and the corresponding column range.
+**Insight:** The `extract_ranges` function iterates through the bytes of a line, using the `chunk_by` method to group consecutive identical characters. For each chunk, it creates a `PlotSegment` with the character and its corresponding column range.
 
-**Reasoning:** This provides a clean and efficient way to break down a raw text line into its fundamental horizontal components (`PlotSegment`s). For example, the line "RRRRIICCFF" is parsed into the following `PlotSegment`s: `('R', 0..4)`, `('I', 4..6)`, `('C', 6..8)`, `('F', 8..10)`.
+**Reasoning:** This provides a clean and efficient way to break down a raw text line into its fundamental horizontal components (`PlotSegment`s). For example, the line "RRRRIICCFF" is parsed into the following `PlotSegment`s: `('R':0..4)`, `('I':4..6)`, `('C':6..8)`, `('F':8..10)`. These segments are the building blocks for identifying and assembling larger plots.
 
 ## 4. Step 3: Grouping Segments into Plots
 
@@ -90,6 +110,26 @@ pub(super) struct Plot {
 
 The `Plot` struct also contains methods for adding segments (`insert`), merging with other plots (`extend`), calculating its `area`, and calculating its `perimeter`.
 
+```rust
+pub fn extend(&mut self, plot: Plot) {
+    self.rows.extend(plot.rows);
+}
+```
+
+**Insight:** The `extend` method allows merging another `Plot`'s segments into the current one. This is used when two separate plots are found to connect via a new segment, requiring them to be consolidated into a single plot.
+
+**Reasoning:** By simply extending the `BTreeSet`, we leverage its properties to handle duplicates and keep the combined segments sorted efficiently.
+
+```rust
+pub fn iter(&self) -> impl Iterator<Item = &(usize, PlotSegment)> {
+    self.rows.iter()
+}
+```
+
+**Insight:** The `iter` method provides an iterator over the segments within the plot, allowing easy access to its constituent parts.
+
+**Reasoning:** Iterators are a standard Rust pattern for processing collections. This provides a convenient way to access all segments of a plot for calculations or visualization.
+
 ## 5. Step 4: Assembling the Garden Across Lines
 
 This is the most complex part of the program: connecting the horizontal `PlotSegment`s from different lines to form coherent, multi-line `Plot`s and managing plot identities, including merging plots that become connected by a new segment.
@@ -99,61 +139,91 @@ The main structure holding all identified plots is the `Garden`:
 ```rust
 #[derive(Default)]
 pub(super) struct  Garden {
-    plots: BTreeMap<usize, Plot>
+    plots: HashMap<usize, Plot>
 }
 ```
 
-**Insight:** The `Garden` is a map (`BTreeMap`) where the keys are unique plot IDs (`usize`) and the values are the corresponding `Plot` structures. `BTreeMap` keeps plots sorted by ID, although the order of IDs isn't strictly necessary for correctness, it can be helpful for consistent debugging output.
-
-**Reasoning:** Using a map allows quick access to any plot given its ID. The plot IDs are generated sequentially as new plots are discovered using a simple counter provided by the `id_generator` helper function.
-
-The core logic for garden assembly resides in the `parse_garden` function, which orchestrates the processing of each line using helper functions `process_line` and `process_segment`.
-
-Let's look at `parse_garden`:
+**Insight:** The `Garden` is a map (`HashMap`) where the keys are unique plot IDs (`usize`) and the values are the corresponding `Plot` structures. We use a `HashMap` for efficient O(1) average time complexity for insertion and retrieval, which is beneficial for performance. The `Garden` struct provides an `iter` method to iterate over the contained plots:
 
 ```rust
-    pub(super) fn parse_garden(input: &str) -> Garden {
-        // id generator fn()
-        let mut get_new_plot_id = id_generator(0);
-        // line counter
-        let mut get_line_number = id_generator(0);
-
-        let (mut plots, mut g_line) = input
-            .lines()
-            .fold((BTreeMap::<usize, Plot>::new(), LastGardenScanLine::default()), |(plots, g_line), input| {
-                process_line(
-                    input,
-                    plots,
-                    g_line,
-                    &mut get_new_plot_id,
-                    get_line_number()
-                )
-            });
-
-        // move plot segments remaining to the garden map under their respective plot ID
-        push_segments(&mut plots, g_line.drain(), get_line_number());
-
-        // return garden map
-        Garden { plots }
+    pub(super) fn iter(&self) -> impl Iterator<Item = (&usize, &Plot)> {
+        self.plots.iter()
     }
 ```
 
-**Insight:** `parse_garden` uses a `fold` operation over the input lines. This is a common functional pattern to process a sequence while maintaining and updating an accumulator. Here, the accumulator holds the `plots` identified so far (`BTreeMap<usize, Plot>`) and the state from the *last* line processed (`LastGardenScanLine`). The `fold` applies the `process_line` function to each line, updating the accumulator state.
+It also implements the `Index` trait for convenient access to plots by their ID:
+
+```rust
+impl Index<&usize> for Garden {
+    type Output = Plot;
+
+    fn index(&self, index:&usize) -> &Self::Output {
+        &self.plots[index]
+    }
+}
+```
+
+**Reasoning:** Using a map allows quick access to any plot given its ID. The `iter` method and `Index` implementation provide idiomatic Rust ways to interact with the collection of plots.
+
+The primary function for parsing the input string into a `Garden` is the `parse` method on the `Garden` struct itself. This method delegates the core parsing logic to the `parser` module:
+
+```rust
+impl Garden {
+    // ... other methods ...
+    pub(super) fn parse(input: &str) -> Garden {
+        Garden { plots: parser::parse_plots(input) }
+    }
+}
+```
+
+The actual line-by-line processing and plot assembly is handled by the `parser::parse_plots` function:
+
+```rust
+// garden is a collection of plots expressed by a 1 or more overlapping vertical segments
+// parser extracts and composes plots per scanline
+// a plot is composed out of multiple scanlines
+pub fn parse_plots(input: &str) -> HashMap<usize,Plot> {
+    // id generator fn()
+    let mut get_new_plot_id = id_generator(0);
+    // line counter
+    let mut get_line_number = id_generator(0);
+
+    let (mut plots, mut g_line) = input
+        .lines()
+        .fold((HashMap::<usize, Plot>::new(), LastGardenScanLine::default()), |(plots, g_line), input| {
+            process_line(
+                input,
+                plots,
+                g_line,
+                &mut get_new_plot_id,
+                get_line_number()
+            )
+        });
+
+    // move plot segments remaining to the garden map under their respective plot ID
+    push_segments(&mut plots, g_line.drain(), get_line_number());
+
+    // return garden map
+    plots
+}
+```
+
+**Insight:** `parser::parse_plots` uses a `fold` operation over the input lines. This is a common functional pattern to process a sequence while maintaining and updating an accumulator. Here, the accumulator holds the `plots` identified so far (`HashMap<usize, Plot>`) and the state from the *last* line processed (`LastGardenScanLine`). The `fold` applies the `process_line` function from the `parser` module to each line, updating the accumulator state.
 
 **Reasoning:** Using `fold` provides a clean, iterative way to build the `Garden` by processing lines in order. It ensures that the state from the previous line (`LastGardenScanLine`) is correctly passed to `process_line` for the current line.
 
 ### Processing Each Line: The `process_line` Function
 
-The `process_line` function is called by `parse_garden` for every line of the input. Its role is to determine how the segments on the *current* line connect to the plots identified on the *previous* line.
+The `process_line` function, located within the `parser` module, is called by `parser::parse_plots` for every line of the input. Its role is to determine how the segments on the *current* line connect to the plots identified on the *previous* line.
 
 ```rust
 fn process_line(
     input: &str,
-    plots: BTreeMap<usize, Plot>, // plots collected so far
+    plots: HashMap<usize, Plot>, // plots collected so far
     g_line: LastGardenScanLine, // state from the previous line
     mut get_plot_id: impl FnMut() -> usize,
     line: usize // current line number
-) -> (BTreeMap<usize, Plot>, LastGardenScanLine) // updated plots and state for the next line
+) -> (HashMap<usize, Plot>, LastGardenScanLine) // updated plots and state for the next line
 {
     let mut new_g_line = LastGardenScanLine::default();
 
@@ -200,17 +270,17 @@ fn process_line(
 
 ### Determining Plot Identity and Merging: The `process_segment` Function
 
-The `process_segment` function is the heart of the plot identification and merging logic. It takes a single `segment` from the *current* line and compares it against the segments recorded in the `g_line` (the state from the *previous* line).
+The `process_segment` function, located within the `parser` module, is the heart of the plot identification and merging logic. It is called by `process_line` and takes a single `segment` from the *current* line, comparing it against the segments recorded in the `g_line` (the state from the *previous* line).
 
 ```rust
 // for each new segment identify the plot that is overlapping with and assign the segment the plot's ID
 fn process_segment(
     segment: &PlotSegment, // The segment from the current line being processed
-    plots: BTreeMap<usize, Plot>, // The collection of all plots found so far (passed by value)
+    plots: HashMap<usize, Plot>, // The collection of all plots found so far (passed by value)
     g_line: LastGardenScanLine, // The segments and IDs from the previous line (passed by value)
     line: usize, // The current line number
     mut get_plot_id: impl FnMut() -> usize // Function to get a new unique plot ID
-) -> (BTreeMap<usize, Plot>, LastGardenScanLine, usize, Option<Vec<usize>>)
+) -> (HashMap<usize, Plot>, LastGardenScanLine, usize, Option<Vec<usize>>)
     {
         // find active plots matching this segment
         // matching = (a) overlapping with && (b) have same plant type
@@ -280,7 +350,7 @@ Once the `Garden` is fully parsed and all `Plot`s are assembled, we can calculat
 
 **Insight:** The area of a plot is simply the sum of the lengths of all its horizontal segments.
 
-**Reasoning:** By definition, each `PlotSegment` represents a rectangular area of a single plant type on its row. Summing the lengths of all such segments within a `Plot` gives the total count of individual plant cells, which is the area.
+**Reasoning:** By definition, each `PlotSegment` represents a rectangular area of a single plant type on its row. Summing the lengths of all such segments within a `Plot` gives the total count of individual plant cells, which is the area. The `area` method iterates through the `BTreeSet` of segments and sums their lengths using a standard iterator pattern.
 
 Calculating the perimeter is more involved:
 
@@ -288,7 +358,7 @@ Calculating the perimeter is more involved:
     pub(super) fn perimeter(&self) -> usize {
         let y_range = self.get_plot_y_range();
 
-        self.edge_count_north_south(y_range.clone())
+        self.edge_count_north_south(y_range)
             // a row may contain 1 or more segments of the same plot with gaps in between
             // plot segments in the same raw are *isolated*, that is, they are never next to each other, end of first != start of second
             // therefore vertical segments per row is 2 * number of segments
@@ -301,7 +371,7 @@ Calculating the perimeter is more involved:
 1. Horizontal edges: These are counted by comparing segments on adjacent lines (North/South). The `edge_count_north_south` function handles this.
 2. Vertical edges: These occur at the start and end of each `PlotSegment` on its row (Left/Right). Since segments on the same row for the same plot are guaranteed not to touch horizontally, each segment contributes a left and a right edge, totaling `self.rows.len() * 2`.
 
-Let's look at `edge_count_north_south`:
+The `perimeter` method also uses helper methods `get_plot_y_range` to find the vertical bounds of the plot and `get_plot_bounding_segs` to get sentinel segments for range queries.
 
 ```rust
     fn edge_count_north_south(&self, lines: impl Iterator<Item = usize>) -> usize  {
@@ -357,26 +427,88 @@ Let's look at `edge_count_north_south`:
     }
 ```
 
-**Insight:** This function calculates the contribution of horizontal (North/South) edges to the perimeter. It iterates through each row (`y`) containing segments of the plot. For each segment on the current row (`y`), it calculates the non-overlapping length against segments on the row *above* (`y-1`) and the row *below* (`y+1`). The non-overlapping portion represents the horizontal perimeter edge at that location. The calculation `2 * seg.len() - above - below` efficiently sums the horizontal edges (both north and south faces) for that segment. The `fold` implementation cleverly updates the ranges for the `above_row`, `current_row`, and `below_row` iterators in each step, avoiding repeated lookups for the same row data.
+**Insight:** This function calculates the contribution of horizontal (North/South) edges to the perimeter. It iterates through each row (`y`) containing segments of the plot, bounded by the overall `y_range` of the plot. For each segment on the current row (`y`), it calculates the non-overlapping length against segments on the row *above* (`y-1`) and the row *below* (`y+1`). The non-overlapping portion represents the horizontal perimeter edge at that location. The calculation `2 * seg.len() - above - below` efficiently sums the horizontal edges (both north and south faces) for that segment. The use of `seg.count_horizontal_edges` method abstracts the overlap calculation against adjacent rows. The `fold` implementation cleverly updates the ranges for the `above_row`, `current_row`, and `below_row` iterators in each step, avoiding repeated lookups for the same row data.
 
-**Reasoning:** By summing the non-overlapping vertical lengths for every segment against its neighbors above and below, and adding the fixed horizontal edges (two per segment), we get the total perimeter. This approach correctly handles complex shapes with holes or indentations.
+**Reasoning:** By summing the non-overlapping vertical lengths for every segment against its neighbors above and below, and adding the fixed horizontal edges (two per segment, counted in the `perimeter` method), we get the total perimeter. This approach correctly handles complex shapes with holes or indentations by precisely accounting for which parts of a segment's edges are *not* adjacent to another segment of the same plot.
 
 ## 7. Step 6: Visualizing the Results
 
 Understanding the output of a spatial algorithm is crucial for debugging and verification. The program includes `Debug` implementations that provide a visual representation.
 
 ```rust
-impl Debug for Garden {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use colored::Colorize;
-        // ... rendering code ...
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        use itertools::Itertools;
+
+        // Collect all segments from all plots into a BTreeSet.
+        // This flattens the data structure and sorts segments primarily by y-coordinate
+        // and secondarily by segment start, which is crucial for the debug output
+        // to be rendered scanline by scanline and segments within a scanline
+        // in order.
+        let segments = self.plots
+            .iter()
+            .flat_map(|(id, plot)|
+                // For each plot, associate its ID with each of its segments so we can colour it correctly.
+                std::iter::repeat(id).zip(plot.iter())
+            )
+            // Reformat the tuple to prioritize y-coordinate for sorting by BTreeSet.
+            .map(|(p_id, (y, p_seg))| (y,(p_seg,p_id)))
+            // Collect into a BTreeSet to automatically sort the segments.
+            .collect::<BTreeSet<_>>();
+
+        // Define a closure to generate a deterministic color based on the plot ID.
+        // This ensures that the same plot ID always gets the same color across runs,
+        // making the debug output more consistent and easier to follow.
+        let get_color = |p_id: &usize| -> (u8, u8, u8) {
+            let mut hasher = DefaultHasher::new();
+            // Hash the plot ID.
+            p_id.hash(&mut hasher);
+            let hash = hasher.finish();
+            // Extract R, G, B components from the hash value.
+            (
+                ((hash >> 16) & 0xFF) as u8, // Red component from bits 16-23
+                ((hash >> 8) & 0xFF) as u8,  // Green component from bits 8-15
+                (hash & 0xFF) as u8,         // Blue component from bits 0-7
+            )
+        };
+
+        // Iterate through the collected segments, grouping them by their y-coordinate (scanline).
+        // `chunk_by` from `itertools` is used to create these groups efficiently.
+        // The output includes ANSI escape codes for background colors to visualize plots.
+        for (y, segs) in segments.into_iter().chunk_by(|&(y,_)| y).into_iter() {
+            // Write the scanline number (y + 1 because y is 0-indexed).
+            // Use {:3} for fixed-width alignment. Handle potential write errors.
+            write!(f, "{:3} ", y + 1)?;
+
+            // Iterate through segments belonging to the current scanline.
+            for (_, (p_seg, p_id)) in segs {
+                // Get the deterministic color for the plot ID.
+                let (r, g, b) = get_color(p_id);
+                // Get the plant character for the segment.
+                let plant_char = p_seg.plant();
+
+                // Write the ANSI escape code to set the background color using 24-bit color (48;2;R;G;B).
+                write!(f, "\x1B[48;2;{};{};{}m", r, g, b)?;
+                // Write the plant character repeatedly for the length of the segment.
+                for _ in 0..p_seg.len() {
+                    write!(f, "{}", plant_char)?;
+                }
+            }
+            // After processing all segments for a scanline,
+            // Write the ANSI escape code to reset text attributes (back to default)
+            // and add a new line
+            writeln!(f, "\x1B[0m")?;
+        }
+        // Return Ok(()) to indicate successful formatting.
+        Ok(())
     }
 }
 ```
 
-**Insight:** The `Debug` implementation for `Garden` generates a colored grid representation of the garden, where each plot is rendered with a unique color based on its ID and plant type. It also prints the row number and lists the segments present on each row.
+**Insight:** The `Debug` implementation for `Garden` generates a colored grid representation of the garden using ANSI escape codes and the `colored` crate. Each plot is rendered with a deterministic unique background color based on its ID, displaying the plant character. The implementation collects all segments into a `BTreeSet` to sort them by row and then column, ensuring correct scanline rendering. This visualization includes the row number and provides a clear visual mapping of the identified plots.
 
-**Reasoning:** This visualization allows you to see the identified plots overlaid on the garden grid. You can visually inspect if the plots were correctly identified, if merges happened as expected, and if the shapes match the input. This is invaluable for debugging the complex parsing logic.
+**Reasoning:** This visualization allows you to see the identified plots overlaid on the garden grid with distinct colors. You can visually inspect if the plots were correctly identified, if merges happened as expected, and if the shapes match the input. This is invaluable for debugging the complex parsing logic, especially with spatial data.
 
 There is also a `Debug` implementation for `Plot` in `plot.rs` which lists the segments for a single plot organized by row number, providing a more detailed look at the structure of an individual plot.
 
@@ -402,29 +534,33 @@ fn main() {
         }
     ).unwrap();
 
-    let garden = Garden::parse_garden(&input);
+    let garden = Garden::parse(&input);
 
+    let t = time::Instant::now();
     let total = garden
         .iter()
-        .inspect(|(id, plot)| println!("ID:{id}\n{plot:?}"))
+        // .inspect(|(id, plot)| println!("ID:{id}\n{plot:?}"))
         .map(|(_,v)|
             (v.area(), v.perimeter())
         )
         .map(|(a,b)| {
-            println!("area: {} * perimeter: {} = {}\n", a, b, a * b);
+            // println!("area: {} * perimeter: {} = {}\n", a, b, a * b);
             a * b
         })
         .sum::<usize>();
 
+    let el_puzzle = t.elapsed();
     println!("{:?}", &garden);
-    println!("Garden total cost : {total}");
-    //assert_eq!(total, 1533024)
+    let el_debug = t.elapsed();
+    println!("Garden total cost : {total} = {el_puzzle:?}");
+    println!("Rendered Garden in {el_debug:?}");
+    assert_eq!(total, 1533024)
 }
 ```
 
-**Insight:** The `main` function reads the input file (allowing an optional command-line argument for the path), calls `Garden::parse_garden` to build the data structure, then iterates through the identified `Plot`s in the `Garden`. For each plot, it calculates the area and perimeter, prints these values, calculates the product (area * perimeter), and sums these products for a total. It uses the `Debug` implementation to print each individual plot and the final assembled garden visualization.
+**Insight:** The `main` function serves as the program's entry point. It reads the garden layout from a file (defaulting to `src/bin/day12/input.txt` or accepting a command-line argument), calls `Garden::parse` to construct the garden representation, and then calculates the total cost by iterating through each identified plot, computing its area and perimeter, and summing the product of these values. It also includes timing information to measure the performance of the parsing and calculation phase, and the visualization phase. Finally, it prints the visualized garden using the `Debug` implementation and the total calculated cost, including an assertion for a known correct total for the default input.
 
-**Reasoning:** This function provides the entry point and orchestrates the main workflow: input -> process -> output. The use of iterators (`iter`, `map`, `sum`) and the `inspect` adapter demonstrates a functional style for processing the collection of plots.
+**Reasoning:** This function orchestrates the overall flow: input reading, parsing, calculation, visualization, and output. The use of iterators for processing plots demonstrates a functional approach to data aggregation. The timing measurements are included for performance analysis.
 
 ## 9. Design Decisions and Trade-offs
 
@@ -434,9 +570,9 @@ Throughout the development of this program, several design choices were made, ea
     *   *Benefit:* This simplifies algorithms that need ordered access (like perimeter calculation) and makes visualization consistent. Iteration is efficient in sorted order.
     *   *Trade-off:* Insertion into a `BTreeSet` is typically `O(log n)`, which is less performant than `O(1)` for `Vec` or `HashMap`. The requirement for `PlotSegment` to implement `Ord` adds a slight complexity to the type definition.
 
-2.  **`BTreeMap` for Garden Plots:** Using a `BTreeMap` to map plot IDs to `Plot` structures.
-    *   *Benefit:* Provides efficient `O(log n)` lookup, insertion, and removal of plots by ID, necessary during the merging process.
-    *   *Trade-off:* Like `BTreeSet`, it has a performance cost compared to `HashMap` for hashing types, though `usize` hashing is very fast. The keys are kept sorted, which isn't strictly required but adds predictable iteration order.
+2.  **`HashMap` for Garden Plots:** Using a `HashMap` to map plot IDs to `Plot` structures (`Garden::plots`).
+    *   *Benefit:* Provides efficient `O(1)` average time complexity for lookup, insertion, and removal of plots by ID, which is crucial during the parsing and merging process. This was chosen over `BTreeMap` for better average performance.
+    *   *Trade-off:* `HashMap` does not guarantee any order for keys, unlike `BTreeMap`. However, for the requirements of accessing plots by ID during parsing, the average time complexity benefit outweighs the lack of ordering.
 
 3.  **Line-by-Line Processing with `LastGardenScanLine`:** The algorithm processes the garden one line at a time, relying on state from the *previous* line (`LastGardenScanLine`) to determine connectivity and perform merges.
     *   *Benefit:* This avoids loading the entire potentially very large garden grid into memory at once, making it memory-efficient for height. The logic focuses on local interactions between adjacent lines.
@@ -446,10 +582,6 @@ Throughout the development of this program, several design choices were made, ea
     *   *Benefit:* Provides a simple and deterministic rule for merging, ensuring that plots are correctly consolidated regardless of the order segments are processed within a line.
     *   *Trade-off:* Requires keeping track of and updating deprecated IDs throughout the process, adding complexity to the state management.
 
-5.  **Comprehensive Unit Tests:** The presence of `#[cfg(test)] mod tests` blocks (in `segment.rs`, `plot.rs`, and implicitly `garden.rs` via `plot.rs`'s test) demonstrates a commitment to testing key components like segment overlap, range extraction, and the `Garden::parse_garden` function with sample data.
-    *   *Benefit:* Ensures the correctness of fundamental building blocks and the complex parsing logic, preventing regressions as the code evolves. This is crucial for spatial algorithms where visual correctness is hard to verify manually for large inputs.
-    *   *Trade-off:* Writing comprehensive tests requires significant upfront effort.
-
 ## 10. Conclusion
 
 This garden analysis program showcases several important programming principles:
@@ -458,7 +590,6 @@ This garden analysis program showcases several important programming principles:
 2.  **Data Structure Choice:** Selecting appropriate data structures (`BTreeSet`, `BTreeMap`, `Vec`) based on access patterns and ordering requirements is vital for both correctness and performance.
 3.  **Algorithmic Design:** Implementing a line-by-line processing algorithm with state management (`LastGardenScanLine`) effectively handles the 2D spatial problem while managing memory.
 4.  **Functional Programming:** Utilizing iterators (`map`, `fold`, `chunk_by`) leads to concise and expressive code for data transformation and processing.
-5.  **Test-Driven Development/Testing:** Writing tests for components helps validate complex logic and builds confidence in the overall solution.
-6.  **Visualization:** Implementing `Debug` traits for visual output is a powerful debugging tool for spatial or complex data structures.
+5.  **Visualization:** Implementing `Debug` traits for visual output is a powerful debugging tool for spatial or complex data structures.
 
 By combining these principles, the program successfully identifies, measures, and visualizes distinct plant plots in a 2D grid, demonstrating a robust approach to this type of spatial analysis problem.
