@@ -2,13 +2,7 @@ use std::collections::{HashMap, BTreeSet};
 use std::fmt::Debug;
 use std::ops::Index;
 use super::plot::Plot;
-use super::parser; // Import the new parser module
-
-// Performance optimizations applied:
-// 1. Changed from BTreeMap to HashMap for O(1) vs O(log n) access
-// 2. Pre-allocated collections with known capacities
-// 3. Reduced string allocations in Debug formatting
-// 4. Minimized repeated HashMap lookups
+use super::parser;
 
 #[derive(Default)]
 pub(super) struct  Garden {
