@@ -1,4 +1,6 @@
 use std::{collections::BTreeSet, fmt::Debug, ops::RangeInclusive};
+use itertools::Itertools;
+
 use super::segment::{PlotSegment, Seed};
 
 #[derive(Default)]
@@ -90,39 +92,44 @@ impl Plot {
 
 impl Debug for Plot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use colored::Colorize;
+        // capture plot's left & right bounds
+        let (left, right) = self.rows
+          .iter()
+          .fold((Seed::MAX, Seed::MIN), |(left,right), (_, seg)|
+              (left.min(seg.start()), right.max(seg.end()))
+          );
 
-        let (left, right, line_segments) = self.rows
-            .iter()
-            .fold(
-              (Seed::MAX, Seed::MIN, Vec::new()),
-              |(left,right, mut segments), (y, seg)| {
-                segments.push((y, seg));
-                (left.min(seg.start()), right.max(seg.end()), segments)
-            });
+        // create tmp buffer to store the ranges per line of segments
+        let mut segs = Vec::with_capacity(20);
+        // given all segments are ordered by 'y' and 'seg.start'
+        // it is easy and cheap to iterate per line; we chunk by 'y'
+        for (y, line_segments) in &self.rows.iter().chunk_by(|(y,_)| *y) {
+          let mut ptr = left;
+          segs.clear();
 
-        for line_segments in line_segments.chunk_by(|a,b| a.0.eq(b.0)) {
+          write!(f, "{y:<2} ")?;
+          for (_, seg) in line_segments {
+            // every segment is prefixed with 0..* '.' starting from 'ptr'
+            write!(f, "\x1B[38;2;128;128;128;48;2;{};{};{}m", 16, 16, 128)?;
+            for _ in ptr..seg.start() { write!(f, ".")? }
+            // write the segment
+            write!(f, "\x1B[38;2;255;255;0;48;2;{};{};{}m", 16, 16, 128)?;
+            for _ in seg.start()..seg.end() { write!(f, "{}", seg.plant())? }
+            // capture new start position of '.'
+            ptr = seg.end();
+            // save segment for display
+            segs.push(seg.start()..seg.end());
+          }
 
-            let mut ls_iter = line_segments.iter().peekable();
-            for x in left..right {
-                match ls_iter.peek() {
-                    Some((_, seg)) if seg.contains(x) =>
-                        write!(f, "{}",
-                            String::from(seg.plant()).on_truecolor(16,16,128).bright_yellow()
-                        )?,
-                    segment => {
-                        write!(f, "{}", ".".on_truecolor(16,16,128))?;
-                        if let Some((_,seg)) = segment {
-                            if x >= seg.end() - 1 {
-                                ls_iter.next();
-                            }
-                        }
-                    }
-                }
-            }
-            write!(f, " = " )?;
-            f.debug_list().entries(line_segments).finish()?;
-            writeln!(f)?;
+          // every line finishes with 0..* '.' starting from 'ptr'
+          write!(f, "\x1B[38;2;128;128;128;48;2;{};{};{}m", 16, 16, 128)?;
+          for _ in ptr..right { write!(f, ".")? }
+          write!(f, "\x1B[0m")?;
+
+          write!(f, " = " )?;
+          // display the ranges of all the line segments drawn
+          f.debug_list().entries(segs.iter()).finish()?;
+          writeln!(f)?;
         }
         Ok(())
     }

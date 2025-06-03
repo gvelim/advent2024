@@ -289,7 +289,7 @@ mod tests {
             for (id, plot) in garden {
                 println!("ID:{id}\n{plot:?}");
                 let (a,b) = (plot.area(), plot.perimeter());
-                println!("{id} - area: {} * perimeter: {} = {}", a, b, a * b);
+                println!("area: {} * perimeter: {} = {}", a, b, a * b);
                 assert_eq!((a,b), results[&id]);
             }
         }

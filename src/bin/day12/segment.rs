@@ -7,7 +7,7 @@ pub type Seed = u16;
 pub(super) struct PlotSegment(char, Range<Seed>);
 
 impl PlotSegment {
-    pub(super) fn contains(&self, seed: Seed) -> bool {
+    pub(super) fn _contains(&self, seed: Seed) -> bool {
         self.1.contains(&seed)
     }
     pub(super) fn new(plant: char, range: Range<Seed>) -> Self {
