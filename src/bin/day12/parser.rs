@@ -217,46 +217,81 @@ pub fn parse_plots(input: &str) -> HashMap<usize,Plot> {
 
 #[cfg(test)]
 mod tests {
-    use super::*; // Import items from the parent module (parser)
+    use std::collections::HashMap;
+    use crate::parser; // Import items from the parent module (parser)
 
     #[test]
     fn test_garden_parser() {
-        let input = std::fs::read_to_string("src/bin/day12/sample.txt").unwrap();
-        // Use the parse_garden function from the parser module
-        let garden = parse_plots(&input);
+        let test_runs: [(&str, HashMap<usize,(usize,usize)>);3] = [
+            (
+                "src/bin/day12/sample.txt",
+                HashMap::from(
+                    [
+                        (6, (1 ,4)),
+                        (7, (13, 18)),
+                        (5, (11, 20)),
+                        (0, (12, 18)),
+                        (2, (14, 28)),
+                        (9, (5 ,12)),
+                        (3, (10, 18)),
+                        (10, (3 ,8)),
+                        (4, (13, 20)),
+                        (8, (14, 22)),
+                        (1, (4 ,8))
+                    ]
+                )
+            ), (
+                "src/bin/day12/sample8.txt",
+                HashMap::from([
+                    (15, (5,12)),
+                    (4, (59,68)),
+                    (17, (1,4)),
+                    (9, (1,4)),
+                    (7, (5,12)),
+                    (0, (4,10)),
+                    (18, (1,4)),
+                    (2, (15,20)),
+                    (16, (2,6)),
+                    (3, (12,16)),
+                    (11, (18,18)),
+                    (10, (1,4)),
+                    (5, (4,10)),
+                    (1, (2,6)),
+                    (12, (15,24)),
+                    (14, (10,14)),
+                    (6, (5,12)),
+                    (13, (1,4))
+                ])
+            ), (
+                "src/bin/day12/sample4.txt",
+                HashMap::from([
+                    (3, (5,10)),
+                    (0, (11,18)),
+                    (12, (3,8)),
+                    (1, (69,88)),
+                    (5, (16,22)),
+                    (7, (13,22)),
+                    (8, (5,12)),
+                    (11, (2,6)),
+                    (9, (1,4)),
+                    (2, (7,12)),
+                    (13, (2,6)),
+                    (10, (6,12))
+                ])
+            )
+        ];
 
-        // A region of R plants with price 12 * 18 = 216.
-        assert_eq!(garden[&0].area(), 12, "expected 12 got {:?}\n",garden[&1]);
-        assert_eq!(garden[&0].perimeter(), 18, "expected 18 got {:?}\n",garden[&1]);
-        // A region of I plants with price 4 * 8 = 32.
-        assert_eq!(garden[&1].area(), 4, "expected 4 got {:?}\n",garden[&2]);
-        assert_eq!(garden[&1].perimeter(), 8, "expected 8 got {:?}\n",garden[&2]);
-        // A region of C plants with price 14 * 28 = 392.
-        assert_eq!(garden[&2].area(), 14, "expected 14 got {:?}\n",garden[&3]);
-        assert_eq!(garden[&2].perimeter(), 28, "expected 28 got {:?}\n",garden[&3]);
-        // A region of F plants with price 10 * 18 = 180.
-        assert_eq!(garden[&3].area(), 10, "expected 10 got {:?}\n",garden[&4]);
-        assert_eq!(garden[&3].perimeter(), 18, "expected 18 got {:?}\n",garden[&4]);
-        // A region of V plants with price 13 * 20 = 260.
-        assert_eq!(garden[&4].area(), 13, "expected 13 got {:?}\n",garden[&5]);
-        assert_eq!(garden[&4].perimeter(), 20, "expected 20 got {:?}\n",garden[&5]);
-        // A region of J plants with price 11 * 20 = 220.
-        assert_eq!(garden[&5].area(), 11, "expected 11 got {:?}\n",garden[&6]);
-        assert_eq!(garden[&5].perimeter(), 20, "expected 20 got {:?}\n",garden[&6]);
-        // A region of C plants with price 1 * 4 = 4.
-        assert_eq!(garden[&6].area(), 1, "expected 1 got {:?}\n",garden[&7]);
-        assert_eq!(garden[&6].perimeter(), 4, "expected 4 got {:?}\n",garden[&7]);
-        // A region of E plants with price 13 * 18 = 234.
-        assert_eq!(garden[&7].area(), 13, "expected 13 got {:?}\n",garden[&8]);
-        assert_eq!(garden[&7].perimeter(), 18, "expected 18 got {:?}\n",garden[&8]);
-        // A region of I plants with price 14 * 22 = 308.
-        assert_eq!(garden[&8].area(), 14, "expected 14 got {:?}\n",garden[&9]);
-        assert_eq!(garden[&8].perimeter(), 22, "expected 22 got {:?}\n",garden[&9]);
-        // A region of M plants with price 5 * 12 = 60.
-        assert_eq!(garden[&9].area(), 5, "expected 5 got {:?}\n",garden[&10]);
-        assert_eq!(garden[&9].perimeter(), 12, "expected 12 got {:?}\n",garden[&10]);
-        // A region of S plants with price 3 * 8 = 24.
-        assert_eq!(garden[&10].area(), 3, "expected 3 got {:?}\n",garden[&11]);
-        assert_eq!(garden[&10].perimeter(), 8, "expected 8 got {:?}\n",garden[&11]);
+        for (file, results) in test_runs {
+            let garden = parser::parse_plots(
+                &std::fs::read_to_string(file).unwrap()
+            );
+            println!("\nTest Run ===========================");
+            for (id, plot) in garden {
+                println!("ID:{id}\n{plot:?}");
+                let (a,b) = (plot.area(), plot.perimeter());
+                println!("{id} - area: {} * perimeter: {} = {}", a, b, a * b);
+                assert_eq!((a,b), results[&id]);
+            }
+        }
     }
 }

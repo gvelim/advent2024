@@ -54,7 +54,7 @@ impl Plot {
         let (_, _, _, sum) = lines
             .fold(
                 (
-                    self.rows.range((start-1, west_bound.clone())..=(start-1, east_bound.clone())),
+                    self.rows.range((usize::MAX-1, west_bound.clone())..=(usize::MAX, east_bound.clone())),
                     self.rows.range((start, west_bound.clone())..=(start, east_bound.clone())),
                     self.rows.range((start+1, west_bound.clone())..=(start+1, east_bound.clone())),
                     0
