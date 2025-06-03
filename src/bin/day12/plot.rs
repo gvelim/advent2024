@@ -92,20 +92,18 @@ impl Debug for Plot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use colored::Colorize;
 
-        let (first, last) = (self.rows.first().unwrap().0, self.rows.last().unwrap().0);
-        let (left, right) = self.rows
+        let (left, right, line_segments) = self.rows
             .iter()
-            .fold((Seed::MAX, Seed::MIN), |(left,right), (_, seg)| {
-                (left.min(seg.start()), right.max(seg.end()))
+            .fold(
+              (Seed::MAX, Seed::MIN, Vec::new()),
+              |(left,right, mut segments), (y, seg)| {
+                segments.push((y, seg));
+                (left.min(seg.start()), right.max(seg.end()), segments)
             });
 
-        for y in first..=last {
-            let (west_bound, east_bound) = self.get_plot_bounding_segs();
-            let line_segments = self.rows
-                .range((y, west_bound) ..= (y, east_bound))
-                .peekable();
+        for line_segments in line_segments.chunk_by(|a,b| a.0.eq(b.0)) {
 
-            let mut ls_iter = line_segments.clone();
+            let mut ls_iter = line_segments.iter().peekable();
             for x in left..right {
                 match ls_iter.peek() {
                     Some((_, seg)) if seg.contains(x) =>
