@@ -92,6 +92,11 @@ impl Plot {
 
 impl Debug for Plot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use std::fmt::Write as _;
+
+        // use a line buffer to render the output
+        let mut buffer = String::with_capacity(200);
+
         // capture plot's left & right bounds
         let (left, right) = self.rows
           .iter()
@@ -101,20 +106,22 @@ impl Debug for Plot {
 
         // create tmp buffer to store the ranges per line of segments
         let mut segs = Vec::with_capacity(20);
+
         // given all segments are ordered by 'y' and 'seg.start'
         // it is easy and cheap to iterate per line; we chunk by 'y'
         for (y, line_segments) in &self.rows.iter().chunk_by(|(y,_)| *y) {
           let mut ptr = left;
           segs.clear();
+          buffer.clear();
 
-          write!(f, "{y:<2} ")?;
+          write!(&mut buffer, "{y:<3} ")?;
           for (_, seg) in line_segments {
             // every segment is prefixed with 0..* '.' starting from 'ptr'
-            write!(f, "\x1B[38;2;128;128;128;48;2;{};{};{}m", 16, 16, 128)?;
-            for _ in ptr..seg.start() { write!(f, ".")? }
+            write!(&mut buffer, "\x1B[38;2;128;128;128;48;2;{};{};{}m", 16, 16, 128)?;
+            for _ in ptr..seg.start() { write!(&mut buffer, ".")? }
             // write the segment
-            write!(f, "\x1B[38;2;255;255;0;48;2;{};{};{}m", 16, 16, 128)?;
-            for _ in seg.start()..seg.end() { write!(f, "{}", seg.plant())? }
+            write!(&mut buffer, "\x1B[38;2;255;255;0;48;2;{};{};{}m", 16, 16, 128)?;
+            for _ in seg.start()..seg.end() { write!(&mut buffer, "{}", seg.plant())? }
             // capture new start position of '.'
             ptr = seg.end();
             // save segment for display
@@ -122,11 +129,12 @@ impl Debug for Plot {
           }
 
           // every line finishes with 0..* '.' starting from 'ptr'
-          write!(f, "\x1B[38;2;128;128;128;48;2;{};{};{}m", 16, 16, 128)?;
-          for _ in ptr..right { write!(f, ".")? }
-          write!(f, "\x1B[0m")?;
+          write!(&mut buffer, "\x1B[38;2;128;128;128;48;2;{};{};{}m", 16, 16, 128)?;
+          for _ in ptr..right { write!(&mut buffer, ".")? }
+          write!(&mut buffer, "\x1B[0m")?;
 
-          write!(f, " = " )?;
+          // write buffer to output
+          write!(f, "{buffer} = " )?;
           // display the ranges of all the line segments drawn
           f.debug_list().entries(segs.iter()).finish()?;
           writeln!(f)?;
