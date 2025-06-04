@@ -94,6 +94,8 @@ impl Debug for Plot {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::fmt::Write as _;
 
+        const SPACE_ANSI : &str = "\x1B[38;2;128;128;128;48;2;16;16;128m";
+        const PLANT_ANSI : &str = "\x1B[38;2;255;255;0;48;2;16;16;128m";
         // use a line buffer to render the output
         let mut buffer = String::with_capacity(200);
 
@@ -117,10 +119,10 @@ impl Debug for Plot {
           write!(&mut buffer, "{y:<3} ")?;
           for (_, seg) in line_segments {
             // every segment is prefixed with 0..* '.' starting from 'ptr'
-            write!(&mut buffer, "\x1B[38;2;128;128;128;48;2;{};{};{}m", 16, 16, 128)?;
+            write!(&mut buffer, "{SPACE_ANSI}")?;
             for _ in ptr..seg.start() { write!(&mut buffer, ".")? }
             // write the segment
-            write!(&mut buffer, "\x1B[38;2;255;255;0;48;2;{};{};{}m", 16, 16, 128)?;
+            write!(&mut buffer, "{PLANT_ANSI}")?;
             for _ in seg.start()..seg.end() { write!(&mut buffer, "{}", seg.plant())? }
             // capture new start position of '.'
             ptr = seg.end();
@@ -129,7 +131,7 @@ impl Debug for Plot {
           }
 
           // every line finishes with 0..* '.' starting from 'ptr'
-          write!(&mut buffer, "\x1B[38;2;128;128;128;48;2;{};{};{}m", 16, 16, 128)?;
+          write!(&mut buffer, "{SPACE_ANSI}")?;
           for _ in ptr..right { write!(&mut buffer, ".")? }
           write!(&mut buffer, "\x1B[0m")?;
 
