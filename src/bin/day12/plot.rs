@@ -88,6 +88,38 @@ impl Plot {
         });
         sum
     }
+
+    pub(crate) fn count_corners(&self) -> usize {
+        let (west, east) = self.get_plot_bounding_segs();
+        let start = self.rows.first().expect("Plot Empty!").0;
+
+        let (_,_,sum) = self.get_plot_y_range()
+            .fold((
+                self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())),
+                self.rows.range((start,west.clone())..(start,east.clone())),
+                0,
+            ),
+            |(last_line, current_line, mut sum), y|
+            {
+                for (_,seg) in current_line.clone() {
+                    println!("{seg:?}");
+                    sum += 2 - last_line.clone()
+                        .inspect(|s| print!("{s:?},"))
+                        .filter(|(_,s)| seg.is_overlapping(s))
+                        .map(|(_,s)|
+                            (s.start() == seg.start()) as usize + (s.end() == seg.end()) as usize
+                        )
+                        .sum::<usize>();
+                    println!(" = {sum}");
+                }
+                (
+                    current_line.clone(),
+                    self.rows.range((y+1, west.clone())..(y+1,east.clone())),
+                    sum
+                )
+            });
+        sum
+    }
 }
 
 impl Debug for Plot {
@@ -142,5 +174,22 @@ impl Debug for Plot {
           writeln!(f)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::parser::parse_plots;
+
+    #[test]
+    fn test_count_corners() {
+        let plots = parse_plots(
+            &std::fs::read_to_string("src/bin/day12/sample8.txt").expect("cannot read file")
+        );
+
+        println!("{:?}", plots[&4]);
+        println!("{:?}", plots[&4].count_corners());
+
     }
 }
