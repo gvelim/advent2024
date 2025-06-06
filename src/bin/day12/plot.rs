@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, fmt::Debug, ops::RangeInclusive};
+use std::{collections::BTreeSet, fmt::Debug, ops::RangeInclusive, usize};
 use itertools::Itertools;
 
 use super::segment::{PlotSegment, Seed};
@@ -93,7 +93,7 @@ impl Plot {
         let (west, east) = self.get_plot_bounding_segs();
         let start = self.rows.first().expect("Plot Empty!").0;
 
-        let (_,_,sum) = self.get_plot_y_range()
+        let (last_line,_,sum) = self.get_plot_y_range()
             .fold((
                 self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())),
                 self.rows.range((start,west.clone())..(start,east.clone())),
@@ -101,24 +101,29 @@ impl Plot {
             ),
             |(last_line, current_line, mut sum), y|
             {
+                println!("Line: {y}");
                 for (_,seg) in current_line.clone() {
-                    println!("{seg:?}");
+                    print!("{seg:?} vs ");
                     sum += 2 - last_line.clone()
-                        .inspect(|s| print!("{s:?},"))
                         .filter(|(_,s)| seg.is_overlapping(s))
+                        .inspect(|s| print!("{s:?}"))
                         .map(|(_,s)|
                             (s.start() == seg.start()) as usize + (s.end() == seg.end()) as usize
                         )
+                        .inspect(|n| print!(":{n},"))
                         .sum::<usize>();
                     println!(" = {sum}");
                 }
+
                 (
                     current_line.clone(),
                     self.rows.range((y+1, west.clone())..(y+1,east.clone())),
                     sum
                 )
             });
-        sum
+
+        // add 2 corners for each bottom line segment remaining
+        sum + last_line.map(|_| 2 ).sum::<usize>()
     }
 }
 
@@ -188,7 +193,7 @@ mod test {
             &std::fs::read_to_string("src/bin/day12/sample8.txt").expect("cannot read file")
         );
 
-        println!("{:?}", plots[&4]);
+        println!("\n{:?}", plots[&4]);
         println!("{:?}", plots[&4].count_corners());
 
     }
