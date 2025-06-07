@@ -18,7 +18,7 @@ fn main() {
 
     let garden = Garden::parse(&input);
 
-    let calculate_cost = |garden: &Garden, fcalc: fn((&usize, &Plot)) -> usize| -> usize {
+    let calculate_cost = |garden: &Garden, fcalc: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
         garden
         .iter()
         // .inspect(|(id, plot)| print!("ID:{id}\n{plot:?}"))
@@ -28,17 +28,15 @@ fn main() {
         .sum::<usize>()
     };
 
-    let mut t = time::Instant::now();
+    let t = time::Instant::now();
     let total_1 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.perimeter_count());
     let el_puzzle_1 = t.elapsed();
 
-    t = time::Instant::now();
     let total_2 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.sides_count());
-    let el_puzzle_2 = t.elapsed();
+    let el_puzzle_2 = t.elapsed() - el_puzzle_1;
 
-    t = time::Instant::now();
     println!("{:?}", &garden);
-    let el_debug = t.elapsed();
+    let el_debug = t.elapsed() - el_puzzle_2 - el_puzzle_1;
 
     println!("Part 1 - Garden total cost : {total_1} = {el_puzzle_1:?}");
     println!("Part 2 - Garden total cost : {total_2} = {el_puzzle_2:?}");
