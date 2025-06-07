@@ -33,7 +33,7 @@ fn main() {
     let el_puzzle_1 = t.elapsed();
 
     t = time::Instant::now();
-    let total_2 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.count_of_sides());
+    let total_2 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.sides_count());
     let el_puzzle_2 = t.elapsed();
 
     t = time::Instant::now();
