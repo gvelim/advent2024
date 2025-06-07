@@ -1,4 +1,4 @@
-use std::{collections::{BTreeSet, HashMap}, fmt::Debug, ops::RangeInclusive, usize};
+use std::{collections::{BTreeSet, HashMap, HashSet}, fmt::Debug, ops::RangeInclusive, usize};
 use itertools::Itertools;
 
 use super::segment::{PlotSegment, Seed};
@@ -106,7 +106,7 @@ impl Plot {
         let (_, last_line, _, sum) = self.get_plot_y_range()
             .fold((
                 // reuse HashMap across iterations so to avoid heap allocations overhead
-                HashMap::<u16, u8>::with_capacity(5),
+                HashSet::<u16>::with_capacity(5),
                 // line above
                 self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())),
                 // current line
@@ -122,13 +122,15 @@ impl Plot {
                     .map(|(_,s)| [s.start()*10, s.end()*10 - 1])
                     .flatten()
                     .for_each(|p| {
-                        corners.entry(p)
-                            .and_modify(|c| *c += 1)
-                            .or_insert(1);
+                        if corners.contains(&p) {
+                            corners.remove(&p);
+                        } else {
+                            assert!(corners.insert(p));
+                        }
                     });
 
                 // count only the corners that have been seen once
-                sum += corners.iter().filter(|&(_,v)| *v < 2).count();
+                sum += corners.len();
 
                 // clear corners HashMap for next iteration
                 corners.clear();
