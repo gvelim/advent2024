@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, fmt::Debug, ops::RangeInclusive, usize};
+use std::{collections::{BTreeSet, HashMap}, fmt::Debug, ops::RangeInclusive, usize};
 use itertools::Itertools;
 
 use super::segment::{PlotSegment, Seed};
@@ -89,40 +89,58 @@ impl Plot {
         sum
     }
 
-    pub(crate) fn count_corners(&self) -> usize {
+    pub(crate) fn count_of_sides(&self) -> usize {
         let (west, east) = self.get_plot_bounding_segs();
         let start = self.rows.first().expect("Plot Empty!").0;
 
-        let (last_line,_,sum) = self.get_plot_y_range()
+        // number of sides == number of corners
+        // 1 ..XXX.. <- Seg A
+        // 2 .XXX... <- Seg B
+        // a corner is formed between two segments on vertically adjucent lines; current_line and last_line (above)
+        // when seg_a.start != seg_b.start OR seg_a.end != seg_b.end
+        // therefore for
+        // current line = 1 -> last_line is empty hence count = 2 corners
+        // current line = 2 -> last_line has ..XXX.. hence count = 4 corners
+        // current line = OUT OF BOUNDS -> last_line has .XXX... hence count = 2 corners
+        // total corners = 8
+        let (_, last_line, _, sum) = self.get_plot_y_range()
             .fold((
+                // reuse HashMap across iterations so to avoid heap allocations overhead
+                HashMap::<u16, u8>::with_capacity(5),
+                // line above
                 self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())),
+                // current line
                 self.rows.range((start,west.clone())..(start,east.clone())),
+                // accumulator : total number of corners
                 0,
             ),
-            |(last_line, current_line, mut sum), y|
+            |(mut corners, last_line, current_line, mut sum), y|
             {
-                println!("Line: {y}");
-                for (_,seg) in current_line.clone() {
-                    print!("{seg:?} vs ");
-                    sum += 2 - last_line.clone()
-                        .filter(|(_,s)| seg.is_overlapping(s))
-                        .inspect(|s| print!("{s:?}"))
-                        .map(|(_,s)|
-                            (s.start() == seg.start()) as usize + (s.end() == seg.end()) as usize
-                        )
-                        .inspect(|n| print!(":{n},"))
-                        .sum::<usize>();
-                    println!(" = {sum}");
-                }
+                // we count all unique corners that are formed between 2 lines
+                current_line.clone()
+                    .chain(last_line)
+                    .map(|(_,s)| [s.start()*10, s.end()*10 - 1])
+                    .flatten()
+                    .for_each(|p| {
+                        corners.entry(p)
+                            .and_modify(|c| *c += 1)
+                            .or_insert(1);
+                    });
 
+                // count only the corners that have been seen once
+                sum += corners.iter().filter(|&(_,v)| *v < 2).count();
+
+                // clear corners HashMap for next iteration
+                corners.clear();
                 (
-                    current_line.clone(),
-                    self.rows.range((y+1, west.clone())..(y+1,east.clone())),
+                    corners,                                                   // reuse hashmap
+                    current_line.clone(),                                      // current_line becomes last_line
+                    self.rows.range((y+1, west.clone())..(y+1,east.clone())),  // next line becomes current_line
                     sum
                 )
             });
 
-        // add 2 corners for each bottom line segment remaining
+        // add 2 corners for each bottom line segment
         sum + last_line.map(|_| 2 ).sum::<usize>()
     }
 }
@@ -184,17 +202,22 @@ impl Debug for Plot {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use crate::parser::parse_plots;
 
     #[test]
     fn test_count_corners() {
         let plots = parse_plots(
-            &std::fs::read_to_string("src/bin/day12/sample8.txt").expect("cannot read file")
+            &std::fs::read_to_string("src/bin/day12/sample.txt").expect("cannot read file")
         );
 
-        println!("\n{:?}", plots[&4]);
-        println!("{:?}", plots[&4].count_corners());
+        let sum = plots.into_iter()
+            .inspect(|(_,plot)| print!("{:?}\n", plot))
+            .inspect(|(_,plot)| print!("{} sides * {} area = ", plot.count_of_sides(), plot.area()))
+            .map(|(_,plot)| plot.count_of_sides() * plot.area())
+            .inspect(|d| println!("{d}\n"))
+            .sum::<usize>();
 
+        println!("total price of fencing: {sum}");
+        assert_eq!(sum, 1206);
     }
 }
