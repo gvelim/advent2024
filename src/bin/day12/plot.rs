@@ -37,7 +37,7 @@ impl Plot {
         self.rows.first().unwrap().0 ..= self.rows.last().unwrap().0
     }
 
-    pub fn get_plot_bounding_segs(&self) -> (PlotSegment, PlotSegment) {
+    pub(super) fn get_plot_bounding_segs(&self) -> (PlotSegment, PlotSegment) {
         let plant = self.rows.first().unwrap().1.plant();
         (
             PlotSegment::new(plant, 0..1),
@@ -89,7 +89,7 @@ impl Plot {
         sum
     }
 
-    pub(crate) fn sides_count(&self) -> usize {
+    pub(super) fn sides_count(&self) -> usize {
         let (west, east) = self.get_plot_bounding_segs();
         let start = self.rows.first().expect("Plot Empty!").0;
         // reuse HashSet across iterations so to avoid heap allocations overhead
