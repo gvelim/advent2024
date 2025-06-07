@@ -488,11 +488,12 @@ pub(crate) fn sides_count(&self) -> usize {
         });
     // add 2 corners for each bottom line segment
     sum + last_line.count() * 2
-}```
+}
+```
 
 **Insight:** The key insight for Part 2 is that for any simple polygon (or a collection of simple polygons, which our plots effectively are), the number of sides is equal to the number of "convex" or "concave" corners where the boundary changes direction. Instead of counting individual units of perimeter length, we count these distinct corner locations.
 
-**Reasoning:** The algorithm leverages this corner-counting principle. It works by iterating through the rows containing segments of the plot, considering pairs of vertically adjacent rows at a time. For each pair of lines, it identifies all the horizontal column positions where a segment starts or ends on either line. By using a `HashSet` as a toggle mechanism (`insert` if not present, `remove` if present), it efficiently identifies which of these start/end positions are *unpaired* between the two lines. An unpaired position signifies a point where the vertical boundary of the plot changes direction from one line to the next – i.e., a corner. The multiplication and subtraction on the segment start and end positions (`s.start()*10`, `s.end()*10 - 1`) is a clever way to ensure that a segment ending at column `X` and a segment starting at column `X` are treated as events at distinct vertical lines in the grid, preventing accidental cancellation. The total corner count accumulated across all pairs of lines gives the sum of corners along the internal vertical boundaries. Finally, we add the corners formed by the bottom edges of the segments on the plot's last row, as these always contribute two corners per segment since there's no row below to potentially align with their boundaries. This method correctly counts all corners for complex plot shapes, including those with internal holes.
+**Reasoning:** The algorithm leverages this corner-counting principle. It works by iterating through the rows containing segments of the plot, considering pairs of vertically adjacent rows at a time. For each pair of lines, it identifies all the horizontal column positions where a segment starts or ends on either line. By using a `HashSet` as a toggle mechanism (`insert` if not present, `remove` if present), it efficiently identifies which of these start/end positions are *unpaired* between the two lines. An unpaired position signifies a point where the vertical boundary of the plot changes direction from one line to the next – i.e., a corner. The multiplication and subtraction on the segment start and end positions (`s.start()*10`, `s.end()*10 - 1`) is a clever way to ensure that a segment ending at column `X` (the non-inclusive bound of a `Range`) and a segment starting at column `X` (the inclusive bound of a `Range`) are treated as events at distinct vertical lines in the grid, preventing accidental cancellation. The total corner count accumulated across all pairs of lines gives the sum of corners along the internal vertical boundaries. Finally, we add the corners formed by the bottom edges of the segments on the plot's last row, as these always contribute two corners per segment since there's no row below to potentially align with their boundaries. This method correctly counts all corners for complex plot shapes, including those with internal holes.
 
 ## 7. Step 6: Visualizing the Results
 
@@ -602,8 +603,6 @@ fn main() {
     let calculate_cost = |garden: &Garden, fcalc: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
         garden
         .iter()
-        // .inspect(|(id, plot)| print!("ID:{id}\n{plot:?}"))
-        // .inspect(|(_, plot)| print!("area: {} * perimeter: {} = ", plot.area(), plot.perimeter()))
         .map(fcalc)
         .sum::<usize>()
     };
