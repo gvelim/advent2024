@@ -22,7 +22,7 @@ impl Plot {
         self.rows.iter().map(|seg| seg.1.len() as usize).sum::<usize>()
     }
 
-    pub(super) fn perimeter(&self) -> usize {
+    pub(super) fn perimeter_count(&self) -> usize {
         let y_range = self.get_plot_y_range();
 
         self.edge_count_north_south(y_range.clone())
@@ -89,7 +89,7 @@ impl Plot {
         sum
     }
 
-    pub(crate) fn count_of_sides(&self) -> usize {
+    pub(crate) fn sides_count(&self) -> usize {
         let (west, east) = self.get_plot_bounding_segs();
         let start = self.rows.first().expect("Plot Empty!").0;
 
@@ -117,8 +117,14 @@ impl Plot {
             |(mut corners, last_line, current_line, mut sum), y|
             {
                 // we count all unique corners that are formed between 2 lines
-                current_line.clone()
-                    .chain(last_line)
+                last_line
+                    .chain(current_line.clone())
+                    // `*10`, and `*10 - 1` in order to handle edge cases like this below
+                    // ..XXXXXX...
+                    // XXX...XXX.. <- end() = 3
+                    // XX.X..XX... <- start() = 3 MUST not be processed as coinciding with above end()
+                    // X..XXXX....
+                    // by offseting all end() by -1 we eliminate such cases
                     .flat_map(|(_,s)| [s.start()*10, s.end()*10 - 1])
                     .for_each(|p| {
                         // have we seen this corner position before ?
@@ -126,14 +132,12 @@ impl Plot {
                             // remove position as it matches one above
                             corners.remove(&p);
                         } else {
-                            // nope, add corner position
+                            // nope, add new corner position; must be a new insertion 100% of cases
                             assert!(corners.insert(p));
                         }
                     });
-
                 // count non-overlapping / unique corners that have been seen once
                 sum += corners.len();
-
                 // clear corners HashMap for next iteration
                 corners.clear();
                 (
@@ -216,8 +220,8 @@ mod test {
 
         let sum = plots.into_iter()
             .inspect(|(_,plot)| print!("{:?}\n", plot))
-            .inspect(|(_,plot)| print!("{} sides * {} area = ", plot.count_of_sides(), plot.area()))
-            .map(|(_,plot)| plot.count_of_sides() * plot.area())
+            .inspect(|(_,plot)| print!("{} sides * {} area = ", plot.sides_count(), plot.area()))
+            .map(|(_,plot)| plot.sides_count() * plot.area())
             .inspect(|d| println!("{d}\n"))
             .sum::<usize>();
 
