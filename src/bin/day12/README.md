@@ -600,10 +600,10 @@ fn main() {
 
     let garden = Garden::parse(&input);
 
-    let calculate_cost = |garden: &Garden, fcalc: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
+    let calculate_cost = |garden: &Garden, plot_cost_fn: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
         garden
         .iter()
-        .map(fcalc)
+        .map(plot_cost_fn)
         .sum::<usize>()
     };
 
