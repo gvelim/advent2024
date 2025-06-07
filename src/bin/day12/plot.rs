@@ -198,22 +198,59 @@ impl Debug for Plot {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use crate::parser::parse_plots;
 
     #[test]
     fn test_count_corners() {
-        let plots = parse_plots(
-            &std::fs::read_to_string("src/bin/day12/sample.txt").expect("cannot read file")
-        );
+        let runs = [
+            (
+                "src/bin/day12/sample.txt",
+                HashMap::from([
+                    (4, 10),
+                    (0, 10),
+                    (5, 12),
+                    (8, 16),
+                    (1, 4),
+                    (3, 12),
+                    (2, 22),
+                    (6, 4),
+                    (9, 6),
+                    (10, 6),
+                    (7, 8),
+                ])
+            ), (
+                "src/bin/day12/sample4.txt",
+                HashMap::from([
+                    (3, 6),
+                    (0, 10),
+                    (2, 6),
+                    (5, 12),
+                    (7, 10),
+                    (10, 8),
+                    (12, 6),
+                    (13, 4),
+                    (1, 50),
+                    (8, 8),
+                    (9, 4),
+                    (11, 4)
+                ])
+            )
+        ];
 
-        let sum = plots.into_iter()
-            .inspect(|(_,plot)| print!("{:?}\n", plot))
-            .inspect(|(_,plot)| print!("{} sides * {} area = ", plot.sides_count(), plot.area()))
-            .map(|(_,plot)| plot.sides_count() * plot.area())
-            .inspect(|d| println!("{d}\n"))
-            .sum::<usize>();
+        for (file, results) in runs {
+            println!("\nRUN ==========");
+            let plots = parse_plots(
+                &std::fs::read_to_string(file).expect("cannot read file")
+            );
 
-        println!("total price of fencing: {sum}");
-        assert_eq!(sum, 1206);
+            for (id, plot) in plots {
+                println!("ID:{id}");
+                print!("{plot:?}");
+                println!(" No of Sides = {}\n", plot.sides_count());
+                assert_eq!(plot.sides_count(), results[&id]);
+            }
+        }
     }
 }
