@@ -92,6 +92,8 @@ impl Plot {
     pub(crate) fn sides_count(&self) -> usize {
         let (west, east) = self.get_plot_bounding_segs();
         let start = self.rows.first().expect("Plot Empty!").0;
+        // reuse HashSet across iterations so to avoid heap allocations overhead
+        let mut corners = HashSet::<u16>::with_capacity(10);
 
         // number of sides == number of corners
         // 1 ..XXX.. <- Seg A
@@ -103,19 +105,16 @@ impl Plot {
         // current line = 2 -> last_line has ..XXX.. hence count = 4 corners
         // current line = OUT OF BOUNDS -> last_line has .XXX... hence count = 2 corners
         // total corners = 8
-        let (_, last_line, _, sum) = self.get_plot_y_range()
+        let (last_line, _, sum) = self.get_plot_y_range()
             .fold((
-                // reuse HashMap across iterations so to avoid heap allocations overhead
-                HashSet::<u16>::with_capacity(10),
-                // line above
-                self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())),
-                // current line
-                self.rows.range((start,west.clone())..(start,east.clone())),
-                // accumulator : total number of corners
-                0,
+                self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())), // line above
+                self.rows.range((start,west.clone())..(start,east.clone())), // current line
+                0,  // accumulator : total number of corners
             ),
-            |(mut corners, last_line, current_line, mut sum), y|
+            |(last_line, current_line, sum), y|
             {
+                // clear corners HashMap
+                corners.clear();
                 // we count all unique corners that are formed between 2 lines
                 last_line
                     .chain(current_line.clone())
@@ -127,29 +126,18 @@ impl Plot {
                     // by offseting all end() by -1 we eliminate such cases
                     .flat_map(|(_,s)| [s.start()*10, s.end()*10 - 1])
                     .for_each(|p| {
-                        // have we seen this corner position before ?
-                        if corners.contains(&p) {
-                            // remove position as it matches one above
-                            corners.remove(&p);
-                        } else {
-                            // nope, add new corner position; must be a new insertion 100% of cases
-                            assert!(corners.insert(p));
+                        if !corners.insert(p) { // have we seen this corner position before ?
+                            corners.remove(&p); // remove position as it matches one above
                         }
                     });
-                // count non-overlapping / unique corners that have been seen once
-                sum += corners.len();
-                // clear corners HashMap for next iteration
-                corners.clear();
                 (
-                    corners,                                                   // reuse hashmap
-                    current_line.clone(),                                      // current_line becomes last_line
+                    current_line,   // current_line becomes last_line
                     self.rows.range((y+1, west.clone())..(y+1,east.clone())),  // next line becomes current_line
-                    sum
+                    sum + corners.len()     // count non-overlapping / unique corners that have been seen once
                 )
             });
-
         // add 2 corners for each bottom line segment
-        sum + last_line.map(|_| 2 ).sum::<usize>()
+        sum + last_line.count() * 2
     }
 }
 

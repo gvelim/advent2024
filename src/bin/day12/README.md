@@ -439,77 +439,56 @@ The `perimeter_count` method also uses helper methods `get_plot_y_range` to find
 For Part 2 of the puzzle, we need to count the number of distinct sides rather than the total perimeter length. This is accomplished by the `sides_count` method:
 
 ```rust
-    pub(crate) fn sides_count(&self) -> usize {
-        let (west, east) = self.get_plot_bounding_segs();
-        let start = self.rows.first().expect("Plot Empty!").0;
+pub(crate) fn sides_count(&self) -> usize {
+    let (west, east) = self.get_plot_bounding_segs();
+    let start = self.rows.first().expect("Plot Empty!").0;
+    // reuse HashSet across iterations so to avoid heap allocations overhead
+    let mut corners = HashSet::<u16>::with_capacity(10);
 
-        // number of sides == number of corners
-        // 1 ..XXX.. <- Seg A
-        // 2 .XXX... <- Seg B
-        // a corner is formed between two segments on vertically adjucent lines; current_line and last_line (above)
-        // when seg_a.start != seg_b.start OR seg_a.end != seg_b.end
-        // therefore for
-        // current line = 1 -> last_line is empty hence count = 2 corners
-        // current line = 2 -> last_line has ..XXX.. hence count = 4 corners
-        // current line = OUT OF BOUNDS -> last_line has .XXX... hence count = 2 corners
-        // total corners = 8
-        let (_, last_line, _, sum) = self.get_plot_y_range()
-            .fold((
-                // reuse HashSet across iterations so to avoid heap allocations overhead
-                HashSet::<u16>::with_capacity(10),
-                // Initialize the 'last_line' segments. Since the first row has no row above it,
-                // we initialize with an empty range.
-                self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())),
-                // Initialize the 'current_line' segments with the segments from the first row of the plot.
-                self.rows.range((start,west.clone())..(start,east.clone())),
-                // accumulator : total number of corners found so far
-                0,
-            ),
-            |(mut corners, last_line, current_line, mut sum), y|
-            {
-                // Chain the segments from the 'last_line' and 'current_line'.
-                last_line
-                    .chain(current_line.clone())
-                    // `*10`, and `*10 - 1` in order to handle edge cases like this below
-                    // ..XXXXXX...
-                    // XXX...XXX.. <- end() = 3
-                    // XX.X..XX... <- start() = 3 MUST not be processed as coinciding with above end()
-                    // X..XXXX....
-                    // by offseting all end() by -1 we eliminate such cases
-                    .flat_map(|(_,s)| [s.start()*10, s.end()*10 - 1])
-                    .for_each(|p| {
-                        // Use the HashSet as a toggle. If 'p' is seen the second time, it's
-                        // removed (events cancel). If seen the first time, it's inserted
-                        // (potential corner).
-                        if corners.contains(&p) {
-                            corners.remove(&p);
-                        } else {
-                            // Should always be an insertion if it wasn't already there
-                             assert!(corners.insert(p));
-                        }
-                    });
-                // After processing all segments from both lines, the size of the HashSet
-                // is the number of positions that appeared an odd number of times (i.e., once).
-                // These are the positions where corners are formed between line y-1 and line y.
-                sum += corners.len();
-                // Clear the HashSet for the next iteration, reusing the allocation.
-                corners.clear();
-                (
-                    corners,                                                   // Pass the cleared hashmap
-                    current_line.clone(),                                      // Current line becomes the last line for the next iteration
-                    self.rows.range((y+1, west.clone())..(y+1,east.clone())),  // Get segments for the next line
-                    sum                                                        // Pass the updated sum
-                )
-            });
-
-        // The fold processes pairs of lines *within* the plot's vertical range.
-        // We need to add the corners formed by the bottom boundary of the plot.
-        // For each segment on the very last row of the plot (`last_line` after the fold finishes),
-        // its start and end positions form corners because there are no segments below it
-        // to cancel those boundary events. Thus, each segment on the last line adds 2 corners.
-        sum + last_line.map(|_| 2 ).sum::<usize>()
-    }
-```
+    // number of sides == number of corners
+    // 1 ..XXX.. <- Seg A
+    // 2 .XXX... <- Seg B
+    // a corner is formed between two segments on vertically adjucent lines; current_line and last_line (above)
+    // when seg_a.start != seg_b.start OR seg_a.end != seg_b.end
+    // therefore for
+    // current line = 1 -> last_line is empty hence count = 2 corners
+    // current line = 2 -> last_line has ..XXX.. hence count = 4 corners
+    // current line = OUT OF BOUNDS -> last_line has .XXX... hence count = 2 corners
+    // total corners = 8
+    let (last_line, _, sum) = self.get_plot_y_range()
+        .fold((
+            self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())), // line above
+            self.rows.range((start,west.clone())..(start,east.clone())), // current line
+            0,  // accumulator : total number of corners
+        ),
+        |(last_line, current_line, sum), y|
+        {
+            // clear corners HashMap
+            corners.clear();
+            // we count all unique corners that are formed between 2 lines
+            last_line
+                .chain(current_line.clone())
+                // `*10`, and `*10 - 1` in order to handle edge cases like this below
+                // ..XXXXXX...
+                // XXX...XXX.. <- end() = 3
+                // XX.X..XX... <- start() = 3 MUST not be processed as coinciding with above end()
+                // X..XXXX....
+                // by offseting all end() by -1 we eliminate such cases
+                .flat_map(|(_,s)| [s.start()*10, s.end()*10 - 1])
+                .for_each(|p| {
+                    if !corners.insert(p) { // have we seen this corner position before ?
+                        corners.remove(&p); // remove position as it matches one above
+                    }
+                });
+            (
+                current_line,   // current_line becomes last_line
+                self.rows.range((y+1, west.clone())..(y+1,east.clone())),  // next line becomes current_line
+                sum + corners.len()     // count non-overlapping / unique corners that have been seen once
+            )
+        });
+    // add 2 corners for each bottom line segment
+    sum + last_line.count() * 2
+}```
 
 **Insight:** The key insight for Part 2 is that for any simple polygon (or a collection of simple polygons, which our plots effectively are), the number of sides is equal to the number of "convex" or "concave" corners where the boundary changes direction. Instead of counting individual units of perimeter length, we count these distinct corner locations.
 
