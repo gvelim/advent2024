@@ -338,9 +338,11 @@ fn process_segment(
 
 **Reasoning:** This function ensures that horizontal segments are correctly grouped vertically into plots. The logic handles the creation of new plots, the continuation of existing plots, and the merging of plots that become connected. The `depr_ids` mechanism is essential for the calling `process_line` function to finalize the merge by transferring all segments from the deprecated plots into the master plot in the main `plots` map, and updating any references to deprecated IDs in the `LastGardenScanLine` structs.
 
-## 6. Step 5: Calculating Area and Perimeter
+## 6. Step 5: Calculating Area, Perimeter, and Sides
 
-Once the `Garden` is fully parsed and all `Plot`s are assembled, we can calculate their properties.
+Once the `Garden` is fully parsed and all `Plot`s are assembled, we can calculate their properties for both Part 1 and Part 2 of the puzzle.
+
+### Area Calculation
 
 ```rust
     pub(super) fn area(self: &Plot) -> usize {
@@ -352,13 +354,15 @@ Once the `Garden` is fully parsed and all `Plot`s are assembled, we can calculat
 
 **Reasoning:** By definition, each `PlotSegment` represents a rectangular area of a single plant type on its row. Summing the lengths of all such segments within a `Plot` gives the total count of individual plant cells, which is the area. The `area` method iterates through the `BTreeSet` of segments and sums their lengths using a standard iterator pattern.
 
+### Part 1: Perimeter Calculation
+
 Calculating the perimeter is more involved:
 
 ```rust
-    pub(super) fn perimeter(&self) -> usize {
+    pub(super) fn perimeter_count(&self) -> usize {
         let y_range = self.get_plot_y_range();
 
-        self.edge_count_north_south(y_range)
+        self.edge_count_north_south(y_range.clone())
             // a row may contain 1 or more segments of the same plot with gaps in between
             // plot segments in the same raw are *isolated*, that is, they are never next to each other, end of first != start of second
             // therefore vertical segments per row is 2 * number of segments
@@ -371,7 +375,7 @@ Calculating the perimeter is more involved:
 1. Horizontal edges: These are counted by comparing segments on adjacent lines (North/South). The `edge_count_north_south` function handles this.
 2. Vertical edges: These occur at the start and end of each `PlotSegment` on its row (Left/Right). Since segments on the same row for the same plot are guaranteed not to touch horizontally, each segment contributes a left and a right edge, totaling `self.rows.len() * 2`.
 
-The `perimeter` method also uses helper methods `get_plot_y_range` to find the vertical bounds of the plot and `get_plot_bounding_segs` to get sentinel segments for range queries.
+The `perimeter_count` method also uses helper methods `get_plot_y_range` to find the vertical bounds of the plot and `get_plot_bounding_segs` to get sentinel segments for range queries.
 
 ```rust
     fn edge_count_north_south(&self, lines: impl Iterator<Item = usize>) -> usize  {
@@ -429,7 +433,77 @@ The `perimeter` method also uses helper methods `get_plot_y_range` to find the v
 
 **Insight:** This function calculates the contribution of horizontal (North/South) edges to the perimeter. It iterates through each row (`y`) containing segments of the plot, bounded by the overall `y_range` of the plot. For each segment on the current row (`y`), it calculates the non-overlapping length against segments on the row *above* (`y-1`) and the row *below* (`y+1`). The non-overlapping portion represents the horizontal perimeter edge at that location. The calculation `2 * seg.len() - above - below` efficiently sums the horizontal edges (both north and south faces) for that segment. The use of `seg.count_horizontal_edges` method abstracts the overlap calculation against adjacent rows. The `fold` implementation cleverly updates the ranges for the `above_row`, `current_row`, and `below_row` iterators in each step, avoiding repeated lookups for the same row data.
 
-**Reasoning:** By summing the non-overlapping vertical lengths for every segment against its neighbors above and below, and adding the fixed horizontal edges (two per segment, counted in the `perimeter` method), we get the total perimeter. This approach correctly handles complex shapes with holes or indentations by precisely accounting for which parts of a segment's edges are *not* adjacent to another segment of the same plot.
+**Reasoning:** By summing the non-overlapping vertical lengths for every segment against its neighbors above and below, and adding the fixed horizontal edges (two per segment, counted in the `perimeter_count` method), we get the total perimeter. This approach correctly handles complex shapes with holes or indentations by precisely accounting for which parts of a segment's edges are *not* adjacent to another segment of the same plot.
+
+### Part 2: Sides Calculation
+
+For Part 2 of the puzzle, we need to count the number of distinct sides rather than the total perimeter. This is accomplished by the `count_of_sides` method:
+
+```rust
+    pub(crate) fn count_of_sides(&self) -> usize {
+        let (west, east) = self.get_plot_bounding_segs();
+        let start = self.rows.first().expect("Plot Empty!").0;
+
+        // number of sides == number of corners
+        // 1 ..XXX.. <- Seg A
+        // 2 .XXX... <- Seg B
+        // a corner is formed between two segments on vertically adjacent lines; current_line and last_line (above)
+        // when seg_a.start != seg_b.start OR seg_a.end != seg_b.end
+        let (_, last_line, _, sum) = self.get_plot_y_range()
+            .fold((
+                // reuse HashMap across iterations so to avoid heap allocations overhead
+                HashMap::<u16, u8>::with_capacity(5),
+                // line above
+                self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())),
+                // current line
+                self.rows.range((start,west.clone())..(start,east.clone())),
+                // accumulator : total number of corners
+                0,
+            ),
+            |(mut corners, last_line, current_line, mut sum), y|
+            {
+                // we count all unique corners that are formed between 2 lines
+                current_line.clone()
+                    .chain(last_line)
+                    .map(|(_,s)| [s.start()*10, s.end()*10 - 1])
+                    .flatten()
+                    .for_each(|p| {
+                        corners.entry(p)
+                            .and_modify(|c| *c += 1)
+                            .or_insert(1);
+                    });
+
+                // count only the corners that have been seen once
+                sum += corners.iter().filter(|&(_,v)| *v < 2).count();
+
+                // clear corners HashMap for next iteration
+                corners.clear();
+                (
+                    corners,                                                   // reuse hashmap
+                    current_line.clone(),                                      // current_line becomes last_line
+                    self.rows.range((y+1, west.clone())..(y+1,east.clone())),  // next line becomes current_line
+                    sum
+                )
+            });
+
+        // add 2 corners for each bottom line segment
+        sum + last_line.map(|_| 2 ).sum::<usize>()
+    }
+```
+
+**Insight:** The key insight for Part 2 is that the number of sides equals the number of corners in the polygon formed by the plot. Instead of counting individual perimeter units, we count distinct corners where the plot boundary changes direction.
+
+**Reasoning:** The algorithm works by:
+
+1. **Corner Detection:** For each pair of vertically adjacent lines, it identifies where corners are formed. A corner occurs when segment boundaries don't align between adjacent rows (when `seg_a.start != seg_b.start` OR `seg_a.end != seg_b.end`).
+
+2. **Position Mapping:** Each segment's start and end positions are mapped to corner positions using `s.start()*10` and `s.end()*10 - 1`. The multiplication by 10 provides sufficient spacing to distinguish between different corner types.
+
+3. **Corner Counting:** The algorithm uses a `HashMap` to track how many times each corner position is encountered. Corners that appear only once (count < 2) represent actual plot boundary corners, while corners appearing twice are internal intersections that shouldn't be counted.
+
+4. **Boundary Handling:** The algorithm processes line pairs iteratively, with special handling for the bottom boundary where each segment contributes 2 additional corners.
+
+This approach efficiently handles complex plot shapes, including those with holes or irregular boundaries, by focusing on the fundamental geometric property that the number of sides equals the number of corners for any polygon.
 
 ## 7. Step 6: Visualizing the Results
 
@@ -522,7 +596,7 @@ impl Debug for Plot {
 
 ## 8. Step 7: The Main Program Loop
 
-The `main` function ties all these components together to execute the program.
+The `main` function ties all these components together to execute both Part 1 and Part 2 of the puzzle.
 
 ```rust
 fn main() {
@@ -536,31 +610,50 @@ fn main() {
 
     let garden = Garden::parse(&input);
 
-    let t = time::Instant::now();
-    let total = garden
+    let calculate_cost = |garden: &Garden, fcalc: fn((&usize, &Plot)) -> usize| -> usize {
+        garden
         .iter()
-        // .inspect(|(id, plot)| println!("ID:{id}\n{plot:?}"))
-        .map(|(_,v)|
-            (v.area(), v.perimeter())
-        )
-        .map(|(a,b)| {
-            // println!("area: {} * perimeter: {} = {}\n", a, b, a * b);
-            a * b
-        })
-        .sum::<usize>();
+        // .inspect(|(id, plot)| print!("ID:{id}\n{plot:?}"))
+        // .inspect(|(_, plot)| print!("area: {} * perimeter: {} = ", plot.area(), plot.perimeter()))
+        .map(fcalc)
+        // .inspect(|res| println!("{res}\n"))
+        .sum::<usize>()
+    };
 
-    let el_puzzle = t.elapsed();
+    let mut t = time::Instant::now();
+    let total_1 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.perimeter_count());
+    let el_puzzle_1 = t.elapsed();
+
+    t = time::Instant::now();
+    let total_2 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.count_of_sides());
+    let el_puzzle_2 = t.elapsed();
+
+    t = time::Instant::now();
     println!("{:?}", &garden);
     let el_debug = t.elapsed();
-    println!("Garden total cost : {total} = {el_puzzle:?}");
+
+    println!("Part 1 - Garden total cost : {total_1} = {el_puzzle_1:?}");
+    println!("Part 2 - Garden total cost : {total_2} = {el_puzzle_2:?}");
     println!("Rendered Garden in {el_debug:?}");
-    assert_eq!(total, 1533024)
+
+    assert_eq!(total_1, 1533024);
+    assert_eq!(total_2, 910066);
 }
 ```
 
-**Insight:** The `main` function serves as the program's entry point. It reads the garden layout from a file (defaulting to `src/bin/day12/input.txt` or accepting a command-line argument), calls `Garden::parse` to construct the garden representation, and then calculates the total cost by iterating through each identified plot, computing its area and perimeter, and summing the product of these values. It also includes timing information to measure the performance of the parsing and calculation phase, and the visualization phase. Finally, it prints the visualized garden using the `Debug` implementation and the total calculated cost, including an assertion for a known correct total for the default input.
+**Insight:** The `main` function serves as the program's entry point and now handles both parts of the puzzle. It reads the garden layout from a file (defaulting to `src/bin/day12/input.txt` or accepting a command-line argument), calls `Garden::parse` to construct the garden representation, and then calculates the total cost for both parts using a reusable `calculate_cost` closure.
 
-**Reasoning:** This function orchestrates the overall flow: input reading, parsing, calculation, visualization, and output. The use of iterators for processing plots demonstrates a functional approach to data aggregation. The timing measurements are included for performance analysis.
+**Reasoning:** This function orchestrates the overall flow: input reading, parsing, calculation for both parts, visualization, and output. The key improvements include:
+
+1. **Reusable Cost Calculation:** The `calculate_cost` closure accepts a function parameter that determines how to calculate the cost for each plot. This allows the same iteration logic to be used for both Part 1 (`plot.area() * plot.perimeter_count()`) and Part 2 (`plot.area() * plot.count_of_sides()`).
+
+2. **Separate Timing:** Each part is timed separately (`el_puzzle_1` and `el_puzzle_2`) to measure the performance difference between perimeter counting and side counting algorithms.
+
+3. **Dual Assertions:** The function includes assertions for both expected results (`total_1 = 1533024` for Part 1, `total_2 = 910066` for Part 2) to verify correctness.
+
+4. **Clear Output:** The results are clearly labeled to distinguish between Part 1 and Part 2 solutions.
+
+The use of closures and function parameters demonstrates a functional approach to code reuse, avoiding duplication while maintaining clarity about the different calculation methods used for each part of the puzzle.
 
 ## 9. Design Decisions and Trade-offs
 
