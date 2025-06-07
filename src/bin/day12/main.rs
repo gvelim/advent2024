@@ -5,6 +5,7 @@ mod parser;
 
 use std::time;
 use garden::Garden;
+use crate::plot::Plot;
 
 fn main() {
     let args = std::env::args();
@@ -17,23 +18,32 @@ fn main() {
 
     let garden = Garden::parse(&input);
 
-    let t = time::Instant::now();
-    let total = garden
+    let calculate_cost = |garden: &Garden, fcalc: fn((&usize, &Plot)) -> usize| -> usize {
+        garden
         .iter()
-        // .inspect(|(id, plot)| println!("ID:{id}\n{plot:?}"))
-        .map(|(_,v)|
-            (v.area(), v.perimeter())
-        )
-        .map(|(a,b)| {
-            // println!("area: {} * perimeter: {} = {}\n", a, b, a * b);
-            a * b
-        })
-        .sum::<usize>();
+        // .inspect(|(id, plot)| print!("ID:{id}\n{plot:?}"))
+        // .inspect(|(_, plot)| print!("area: {} * perimeter: {} = ", plot.area(), plot.perimeter()))
+        .map(fcalc)
+        // .inspect(|res| println!("{res}\n"))
+        .sum::<usize>()
+    };
 
-    let el_puzzle = t.elapsed();
+    let mut t = time::Instant::now();
+    let total_1 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.perimeter());
+    let el_puzzle_1 = t.elapsed();
+
+    t = time::Instant::now();
+    let total_2 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.count_of_sides());
+    let el_puzzle_2 = t.elapsed();
+
+    t = time::Instant::now();
     println!("{:?}", &garden);
     let el_debug = t.elapsed();
-    println!("Garden total cost : {total} = {el_puzzle:?}");
+
+    println!("Part 1 - Garden total cost : {total_1} = {el_puzzle_1:?}");
+    println!("Part 2 - Garden total cost : {total_2} = {el_puzzle_2:?}");
     println!("Rendered Garden in {el_debug:?}");
-    assert_eq!(total, 1533024)
+
+    assert_eq!(total_1, 1533024);
+    assert_eq!(total_2, 910066);
 }
