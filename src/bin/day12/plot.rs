@@ -22,7 +22,7 @@ impl Plot {
         self.rows.iter().map(|seg| seg.1.len() as usize).sum::<usize>()
     }
 
-    pub(super) fn perimeter(&self) -> usize {
+    pub(super) fn perimeter_count(&self) -> usize {
         let y_range = self.get_plot_y_range();
 
         self.edge_count_north_south(y_range.clone())
