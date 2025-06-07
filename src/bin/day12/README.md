@@ -434,76 +434,86 @@ The `perimeter_count` method also uses helper methods `get_plot_y_range` to find
 **Insight:** This function calculates the contribution of horizontal (North/South) edges to the perimeter. It iterates through each row (`y`) containing segments of the plot, bounded by the overall `y_range` of the plot. For each segment on the current row (`y`), it calculates the non-overlapping length against segments on the row *above* (`y-1`) and the row *below* (`y+1`). The non-overlapping portion represents the horizontal perimeter edge at that location. The calculation `2 * seg.len() - above - below` efficiently sums the horizontal edges (both north and south faces) for that segment. The use of `seg.count_horizontal_edges` method abstracts the overlap calculation against adjacent rows. The `fold` implementation cleverly updates the ranges for the `above_row`, `current_row`, and `below_row` iterators in each step, avoiding repeated lookups for the same row data.
 
 **Reasoning:** By summing the non-overlapping vertical lengths for every segment against its neighbors above and below, and adding the fixed horizontal edges (two per segment, counted in the `perimeter_count` method), we get the total perimeter. This approach correctly handles complex shapes with holes or indentations by precisely accounting for which parts of a segment's edges are *not* adjacent to another segment of the same plot.
-
 ### Part 2: Sides Calculation
 
-For Part 2 of the puzzle, we need to count the number of distinct sides rather than the total perimeter. This is accomplished by the `count_of_sides` method:
+For Part 2 of the puzzle, we need to count the number of distinct sides rather than the total perimeter length. This is accomplished by the `sides_count` method:
 
 ```rust
-    pub(crate) fn count_of_sides(&self) -> usize {
+    pub(crate) fn sides_count(&self) -> usize {
         let (west, east) = self.get_plot_bounding_segs();
         let start = self.rows.first().expect("Plot Empty!").0;
 
         // number of sides == number of corners
         // 1 ..XXX.. <- Seg A
         // 2 .XXX... <- Seg B
-        // a corner is formed between two segments on vertically adjacent lines; current_line and last_line (above)
+        // a corner is formed between two segments on vertically adjucent lines; current_line and last_line (above)
         // when seg_a.start != seg_b.start OR seg_a.end != seg_b.end
+        // therefore for
+        // current line = 1 -> last_line is empty hence count = 2 corners
+        // current line = 2 -> last_line has ..XXX.. hence count = 4 corners
+        // current line = OUT OF BOUNDS -> last_line has .XXX... hence count = 2 corners
+        // total corners = 8
         let (_, last_line, _, sum) = self.get_plot_y_range()
             .fold((
-                // reuse HashMap across iterations so to avoid heap allocations overhead
-                HashMap::<u16, u8>::with_capacity(5),
-                // line above
+                // reuse HashSet across iterations so to avoid heap allocations overhead
+                HashSet::<u16>::with_capacity(10),
+                // Initialize the 'last_line' segments. Since the first row has no row above it,
+                // we initialize with an empty range.
                 self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())),
-                // current line
+                // Initialize the 'current_line' segments with the segments from the first row of the plot.
                 self.rows.range((start,west.clone())..(start,east.clone())),
-                // accumulator : total number of corners
+                // accumulator : total number of corners found so far
                 0,
             ),
             |(mut corners, last_line, current_line, mut sum), y|
             {
-                // we count all unique corners that are formed between 2 lines
-                current_line.clone()
-                    .chain(last_line)
-                    .map(|(_,s)| [s.start()*10, s.end()*10 - 1])
-                    .flatten()
+                // Chain the segments from the 'last_line' and 'current_line'.
+                last_line
+                    .chain(current_line.clone())
+                    // `*10`, and `*10 - 1` in order to handle edge cases like this below
+                    // ..XXXXXX...
+                    // XXX...XXX.. <- end() = 3
+                    // XX.X..XX... <- start() = 3 MUST not be processed as coinciding with above end()
+                    // X..XXXX....
+                    // by offseting all end() by -1 we eliminate such cases
+                    .flat_map(|(_,s)| [s.start()*10, s.end()*10 - 1])
                     .for_each(|p| {
-                        corners.entry(p)
-                            .and_modify(|c| *c += 1)
-                            .or_insert(1);
+                        // Use the HashSet as a toggle. If 'p' is seen the second time, it's
+                        // removed (events cancel). If seen the first time, it's inserted
+                        // (potential corner).
+                        if corners.contains(&p) {
+                            corners.remove(&p);
+                        } else {
+                            // Should always be an insertion if it wasn't already there
+                             assert!(corners.insert(p));
+                        }
                     });
-
-                // count only the corners that have been seen once
-                sum += corners.iter().filter(|&(_,v)| *v < 2).count();
-
-                // clear corners HashMap for next iteration
+                // After processing all segments from both lines, the size of the HashSet
+                // is the number of positions that appeared an odd number of times (i.e., once).
+                // These are the positions where corners are formed between line y-1 and line y.
+                sum += corners.len();
+                // Clear the HashSet for the next iteration, reusing the allocation.
                 corners.clear();
                 (
-                    corners,                                                   // reuse hashmap
-                    current_line.clone(),                                      // current_line becomes last_line
-                    self.rows.range((y+1, west.clone())..(y+1,east.clone())),  // next line becomes current_line
-                    sum
+                    corners,                                                   // Pass the cleared hashmap
+                    current_line.clone(),                                      // Current line becomes the last line for the next iteration
+                    self.rows.range((y+1, west.clone())..(y+1,east.clone())),  // Get segments for the next line
+                    sum                                                        // Pass the updated sum
                 )
             });
 
-        // add 2 corners for each bottom line segment
+        // The fold processes pairs of lines *within* the plot's vertical range.
+        // We need to add the corners formed by the bottom boundary of the plot.
+        // For each segment on the very last row of the plot (`last_line` after the fold finishes),
+        // its start and end positions form corners because there are no segments below it
+        // to cancel those boundary events. Thus, each segment on the last line adds 2 corners.
         sum + last_line.map(|_| 2 ).sum::<usize>()
     }
 ```
 
-**Insight:** The key insight for Part 2 is that the number of sides equals the number of corners in the polygon formed by the plot. Instead of counting individual perimeter units, we count distinct corners where the plot boundary changes direction.
+**Insight:** The key insight for Part 2 is that for any simple polygon (or a collection of simple polygons, which our plots effectively are), the number of sides is equal to the number of "convex" or "concave" corners where the boundary changes direction. Instead of counting individual units of perimeter length, we count these distinct corner locations.
 
-**Reasoning:** The algorithm works by:
-
-1. **Corner Detection:** For each pair of vertically adjacent lines, it identifies where corners are formed. A corner occurs when segment boundaries don't align between adjacent rows (when `seg_a.start != seg_b.start` OR `seg_a.end != seg_b.end`).
-
-2. **Position Mapping:** Each segment's start and end positions are mapped to corner positions using `s.start()*10` and `s.end()*10 - 1`. The multiplication by 10 provides sufficient spacing to distinguish between different corner types.
-
-3. **Corner Counting:** The algorithm uses a `HashMap` to track how many times each corner position is encountered. Corners that appear only once (count < 2) represent actual plot boundary corners, while corners appearing twice are internal intersections that shouldn't be counted.
-
-4. **Boundary Handling:** The algorithm processes line pairs iteratively, with special handling for the bottom boundary where each segment contributes 2 additional corners.
-
-This approach efficiently handles complex plot shapes, including those with holes or irregular boundaries, by focusing on the fundamental geometric property that the number of sides equals the number of corners for any polygon.
+**Reasoning:** The algorithm leverages this corner-counting principle. It works by iterating through the rows containing segments of the plot, considering pairs of vertically adjacent rows at a time. For each pair of lines, it identifies all the horizontal column positions where a segment starts or ends on either line. By using a `HashSet` as a toggle mechanism (`insert` if not present, `remove` if present), it efficiently identifies which of these start/end positions are *unpaired* between the two lines. An unpaired position signifies a point where the vertical boundary of the plot changes direction from one line to the next – i.e., a corner. The multiplication and subtraction on the segment start and end positions (`s.start()*10`, `s.end()*10 - 1`) is a clever way to ensure that a segment ending at column `X` and a segment starting at column `X` are treated as events at distinct vertical lines in the grid, preventing accidental cancellation. The total corner count accumulated across all pairs of lines gives the sum of corners along the internal vertical boundaries. Finally, we add the corners formed by the bottom edges of the segments on the plot's last row, as these always contribute two corners per segment since there's no row below to potentially align with their boundaries. This method correctly counts all corners for complex plot shapes, including those with internal holes.
 
 ## 7. Step 6: Visualizing the Results
 
@@ -610,27 +620,24 @@ fn main() {
 
     let garden = Garden::parse(&input);
 
-    let calculate_cost = |garden: &Garden, fcalc: fn((&usize, &Plot)) -> usize| -> usize {
+    let calculate_cost = |garden: &Garden, fcalc: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
         garden
         .iter()
         // .inspect(|(id, plot)| print!("ID:{id}\n{plot:?}"))
         // .inspect(|(_, plot)| print!("area: {} * perimeter: {} = ", plot.area(), plot.perimeter()))
         .map(fcalc)
-        // .inspect(|res| println!("{res}\n"))
         .sum::<usize>()
     };
 
-    let mut t = time::Instant::now();
+    let t = time::Instant::now();
     let total_1 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.perimeter_count());
     let el_puzzle_1 = t.elapsed();
 
-    t = time::Instant::now();
-    let total_2 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.count_of_sides());
-    let el_puzzle_2 = t.elapsed();
+    let total_2 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.sides_count());
+    let el_puzzle_2 = t.elapsed() - el_puzzle_1;
 
-    t = time::Instant::now();
     println!("{:?}", &garden);
-    let el_debug = t.elapsed();
+    let el_debug = t.elapsed() - el_puzzle_2 - el_puzzle_1;
 
     println!("Part 1 - Garden total cost : {total_1} = {el_puzzle_1:?}");
     println!("Part 2 - Garden total cost : {total_2} = {el_puzzle_2:?}");
@@ -645,9 +652,9 @@ fn main() {
 
 **Reasoning:** This function orchestrates the overall flow: input reading, parsing, calculation for both parts, visualization, and output. The key improvements include:
 
-1. **Reusable Cost Calculation:** The `calculate_cost` closure accepts a function parameter that determines how to calculate the cost for each plot. This allows the same iteration logic to be used for both Part 1 (`plot.area() * plot.perimeter_count()`) and Part 2 (`plot.area() * plot.count_of_sides()`).
+1. **Reusable Cost Calculation:** The `calculate_cost` closure accepts a function parameter that determines how to calculate the cost for each plot. This allows the same iteration logic to be used for both Part 1 (`plot.area() * plot.perimeter_count()`) and Part 2 (`plot.area() * plot.sides_count()`).
 
-2. **Separate Timing:** Each part is timed separately (`el_puzzle_1` and `el_puzzle_2`) to measure the performance difference between perimeter counting and side counting algorithms.
+2. **Cumulative Timing:** The timing is handled cumulatively with `el_puzzle_2` calculated as the difference from the total elapsed time minus `el_puzzle_1`, and `el_debug` calculated by subtracting both puzzle timing measurements from the total elapsed time.
 
 3. **Dual Assertions:** The function includes assertions for both expected results (`total_1 = 1533024` for Part 1, `total_2 = 910066` for Part 2) to verify correctness.
 
