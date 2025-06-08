@@ -37,6 +37,7 @@ impl Debug for Garden {
         use itertools::Itertools;
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
+        use std::fmt::Write as _;
 
         // Collect all segments from all plots into a BTreeSet.
         // This flattens the data structure and sorts segments primarily by y-coordinate
@@ -73,10 +74,11 @@ impl Debug for Garden {
         // Iterate through the collected segments, grouping them by their y-coordinate (scanline).
         // `chunk_by` from `itertools` is used to create these groups efficiently.
         // The output includes ANSI escape codes for background colors to visualize plots.
+        let mut buffer = String::with_capacity(1200);
         for (y, segs) in segments.into_iter().chunk_by(|&(y, _)| y).into_iter() {
             // Write the scanline number (y + 1 because y is 0-indexed).
             // Use {:3} for fixed-width alignment. Handle potential write errors.
-            write!(f, "{:3} ", y + 1)?;
+            write!(&mut buffer, "{:3} ", y + 1)?;
 
             // Iterate through segments belonging to the current scanline.
             for (_, (p_seg, p_id)) in segs {
@@ -86,17 +88,20 @@ impl Debug for Garden {
                 let plant_char = p_seg.plant();
 
                 // Write the ANSI escape code to set the background color using 24-bit color (48;2;R;G;B).
-                write!(f, "\x1B[48;2;{};{};{}m", r, g, b)?;
+                write!(&mut buffer, "\x1B[48;2;{};{};{}m", r, g, b)?;
                 // Write the plant character repeatedly for the length of the segment.
                 for _ in 0..p_seg.len() {
-                    write!(f, "{}", plant_char)?;
+                    write!(&mut buffer, "{}", plant_char)?;
                 }
             }
             // After processing all segments for a scanline,
             // Write the ANSI escape code to reset text attributes (back to default)
             // and add a new line
-            writeln!(f, "\x1B[0m")?;
+            writeln!(&mut buffer, "\x1B[0m")?;
         }
+        // write buffer to output
+        write!(f, "{buffer}")?;
+
         // Return Ok(()) to indicate successful formatting.
         Ok(())
     }
