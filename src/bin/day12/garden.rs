@@ -1,12 +1,12 @@
-use std::collections::{HashMap, BTreeSet};
+use super::parser;
+use super::plot::Plot;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::ops::Index;
-use super::plot::Plot;
-use super::parser;
 
 #[derive(Default)]
-pub(super) struct  Garden {
-    plots: HashMap<usize, Plot>
+pub(super) struct Garden {
+    plots: HashMap<usize, Plot>,
 }
 
 impl Garden {
@@ -18,37 +18,39 @@ impl Garden {
     // parser extracts and composes plots per scanline
     // a plot is composed out of multiple scanlines
     pub(super) fn parse(input: &str) -> Garden {
-        Garden { plots: parser::parse_plots(input) }
+        Garden {
+            plots: parser::parse_plots(input),
+        }
     }
 }
 
 impl Index<&usize> for Garden {
     type Output = Plot;
 
-    fn index(&self, index:&usize) -> &Self::Output {
+    fn index(&self, index: &usize) -> &Self::Output {
         &self.plots[index]
     }
 }
 
 impl Debug for Garden {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use itertools::Itertools;
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        use itertools::Itertools;
 
         // Collect all segments from all plots into a BTreeSet.
         // This flattens the data structure and sorts segments primarily by y-coordinate
         // and secondarily by segment start, which is crucial for the debug output
         // to be rendered scanline by scanline and segments within a scanline
         // in order.
-        let segments = self.plots
+        let segments = self
+            .plots
             .iter()
             .flat_map(|(id, plot)|
                 // For each plot, associate its ID with each of its segments so we can colour it correctly.
-                std::iter::repeat(id).zip(plot.iter())
-            )
+                std::iter::repeat(id).zip(plot.iter()))
             // Reformat the tuple to prioritize y-coordinate for sorting by BTreeSet.
-            .map(|(p_id, (y, p_seg))| (y,(p_seg,p_id)))
+            .map(|(p_id, (y, p_seg))| (y, (p_seg, p_id)))
             // Collect into a BTreeSet to automatically sort the segments.
             .collect::<BTreeSet<_>>();
 
@@ -71,7 +73,7 @@ impl Debug for Garden {
         // Iterate through the collected segments, grouping them by their y-coordinate (scanline).
         // `chunk_by` from `itertools` is used to create these groups efficiently.
         // The output includes ANSI escape codes for background colors to visualize plots.
-        for (y, segs) in segments.into_iter().chunk_by(|&(y,_)| y).into_iter() {
+        for (y, segs) in segments.into_iter().chunk_by(|&(y, _)| y).into_iter() {
             // Write the scanline number (y + 1 because y is 0-indexed).
             // Use {:3} for fixed-width alignment. Handle potential write errors.
             write!(f, "{:3} ", y + 1)?;

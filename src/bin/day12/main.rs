@@ -1,31 +1,30 @@
-mod segment;
-mod plot;
 mod garden;
 mod parser;
+mod plot;
+mod segment;
 
-use std::time;
-use garden::Garden;
 use crate::plot::Plot;
+use garden::Garden;
+use std::time;
 
 fn main() {
     let args = std::env::args();
-    let input = std::fs::read_to_string(
-        match args.skip(1).next() {
-            None => "src/bin/day12/input.txt".to_string(),
-            Some(str) => str,
-        }
-    ).unwrap();
+    let input = std::fs::read_to_string(match args.skip(1).next() {
+        None => "src/bin/day12/input.txt".to_string(),
+        Some(str) => str,
+    })
+    .unwrap();
 
-
-    let calculate_cost = |garden: &Garden, fcalc: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
-        garden
-        .iter()
-        // .inspect(|(id, plot)| print!("ID:{id}\n{plot:?}"))
-        // .inspect(|(_, plot)| print!("area: {} * perimeter: {} = ", plot.area(), plot.perimeter()))
-        .map(fcalc)
-        // .inspect(|res| println!("{res}\n"))
-        .sum::<usize>()
-    };
+    let calculate_cost =
+        |garden: &Garden, fcalc: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
+            garden
+                .iter()
+                // .inspect(|(id, plot)| print!("ID:{id}\n{plot:?}"))
+                // .inspect(|(_, plot)| print!("area: {} * perimeter: {} = ", plot.area(), plot.perimeter()))
+                .map(fcalc)
+                // .inspect(|res| println!("{res}\n"))
+                .sum::<usize>()
+        };
 
     let t = time::Instant::now();
     let garden = Garden::parse(&input);

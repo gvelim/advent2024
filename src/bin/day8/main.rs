@@ -1,9 +1,9 @@
 mod antenna;
 mod city;
 
-use std::time::Instant;
-use itertools::Itertools;
 use crate::city::City;
+use itertools::Itertools;
+use std::time::Instant;
 
 fn main() {
     let input = std::fs::read_to_string("src/bin/day8/input.txt").unwrap();
@@ -11,11 +11,19 @@ fn main() {
 
     let t = Instant::now();
     let count = city.antinodes(1..=1).unique().count();
-    println!("Part 1: {:?} unique locations within the bounds of the map contain an antinode - {:?}",count, t.elapsed());
-    assert_eq!(247,count);
+    println!(
+        "Part 1: {:?} unique locations within the bounds of the map contain an antinode - {:?}",
+        count,
+        t.elapsed()
+    );
+    assert_eq!(247, count);
 
     let t = Instant::now();
     let count = city.antinodes(0..=100).unique().count();
-    println!("Part 2: {:?} unique locations contain an antinode given the effects of resonant harmonics - {:?}",count, t.elapsed());
-    assert_eq!(861,count);
+    println!(
+        "Part 2: {:?} unique locations contain an antinode given the effects of resonant harmonics - {:?}",
+        count,
+        t.elapsed()
+    );
+    assert_eq!(861, count);
 }

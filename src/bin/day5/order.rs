@@ -1,4 +1,8 @@
-use std::{collections::{HashMap, HashSet}, num::ParseIntError, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    num::ParseIntError,
+    str::FromStr,
+};
 
 pub type PageSet = HashSet<usize>;
 pub type Page = usize;
@@ -6,7 +10,7 @@ pub type Page = usize;
 #[derive(Debug)]
 pub struct OrderRules {
     // Key: Page, Value: Set of Pages that MUST follow
-    rules: HashMap<Page,PageSet>
+    rules: HashMap<Page, PageSet>,
 }
 
 impl OrderRules {
@@ -26,10 +30,12 @@ impl FromStr for OrderRules {
             let y = s.next().expect("missing Y").parse::<usize>()?;
             rules
                 .entry(x)
-                .and_modify(|s: &mut PageSet| {s.insert(y);})
+                .and_modify(|s: &mut PageSet| {
+                    s.insert(y);
+                })
                 .or_insert(HashSet::new())
                 .insert(y);
         }
-        Ok(OrderRules{rules})
+        Ok(OrderRules { rules })
     }
 }

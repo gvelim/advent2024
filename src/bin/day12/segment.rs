@@ -1,4 +1,4 @@
-use std::{ops::Range,fmt::Debug};
+use std::{fmt::Debug, ops::Range};
 
 pub type Seed = u16;
 
@@ -34,11 +34,14 @@ impl PlotSegment {
         let end = self.end().min(other.end());
         end - start
     }
-    pub(super) fn count_horizontal_edges<'a>(&self, row_segs: impl Iterator<Item = &'a (usize, PlotSegment)>) -> usize {
+    pub(super) fn count_horizontal_edges<'a>(
+        &self,
+        row_segs: impl Iterator<Item = &'a (usize, PlotSegment)>,
+    ) -> usize {
         row_segs
-            .take_while(|(_,nseg)| nseg.1.start < self.1.end)
-            .filter(|(_,nseg)| nseg.is_overlapping(self))
-            .map(|(_,nseg)| nseg.get_overlap(self) as usize)
+            .take_while(|(_, nseg)| nseg.1.start < self.1.end)
+            .filter(|(_, nseg)| nseg.is_overlapping(self))
+            .map(|(_, nseg)| nseg.get_overlap(self) as usize)
             .sum::<usize>()
     }
 }
@@ -53,7 +56,9 @@ impl PartialOrd for PlotSegment {
 // required for BTreeSet to keep the segments sorted by line location
 impl Ord for PlotSegment {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.1.start.cmp(&other.1.start)
+        self.1
+            .start
+            .cmp(&other.1.start)
             .then_with(|| self.1.end.cmp(&other.1.end))
     }
 }
@@ -63,7 +68,6 @@ impl Debug for PlotSegment {
         write!(f, "{}:{:?}", self.0, self.1)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

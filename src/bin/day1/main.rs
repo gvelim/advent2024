@@ -25,14 +25,10 @@ fn main() {
     a.sort();
     b.sort();
 
-    let hash_b = b
-        .iter()
-        .fold(HashMap::new(), |mut map, key| {
-            map.entry(key)
-                .and_modify(|val| *val += 1)
-                .or_insert(1);
-            map
-        });
+    let hash_b = b.iter().fold(HashMap::new(), |mut map, key| {
+        map.entry(key).and_modify(|val| *val += 1).or_insert(1);
+        map
+    });
 
     let t = Instant::now();
     println!(

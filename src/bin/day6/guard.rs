@@ -7,7 +7,7 @@ pub type Lab = Field<char>;
 pub(crate) struct Guard<'a> {
     pub lab: &'a Lab,
     pub dir: DirVector,
-    pub pos: Location
+    pub pos: Location,
 }
 
 impl Iterator for Guard<'_> {
@@ -19,7 +19,8 @@ impl Iterator for Guard<'_> {
             self.dir = turn_cw(self.dir);
         }
         // move next position as long as it is within bounds
-        self.pos.move_relative(self.dir)
+        self.pos
+            .move_relative(self.dir)
             .filter(|&p| self.lab.within_bounds(p))
             .map(|pos| {
                 self.pos = pos;
@@ -29,36 +30,43 @@ impl Iterator for Guard<'_> {
 }
 
 pub fn find_guard(lab: &Lab, token: &[char]) -> Option<(Location, DirVector)> {
-    lab
-        .iter()
-        .position(|c| token.contains(c))
-        .map(|idx| {
-            let loc = lab.index_to_cartesian(idx);
-            (
-                loc,
-                lab.get(loc)
-                    .map(|val|
-                        match &val {'^' => (0,-1),'>' => (1,0),'v' => (0,1),'<' => (-1,0), _ => unreachable!()}
-                    )
-                    .unwrap()
-            )
-        })
+    lab.iter().position(|c| token.contains(c)).map(|idx| {
+        let loc = lab.index_to_cartesian(idx);
+        (
+            loc,
+            lab.get(loc)
+                .map(|val| match &val {
+                    '^' => (0, -1),
+                    '>' => (1, 0),
+                    'v' => (0, 1),
+                    '<' => (-1, 0),
+                    _ => unreachable!(),
+                })
+                .unwrap(),
+        )
+    })
 }
 
-
 #[test]
-fn test_find_guard() -> Result<(),()> {
+fn test_find_guard() -> Result<(), ()> {
     let dt = [
-        ("...\n.<.\n...\n...",Some((Location(1,1), (-1_isize,0_isize)))),
-        ("...\n^..\n...\n...",Some((Location(0,1), (0,-1)))),
-        ("...\n..>\n...\n...",Some((Location(2,1), (1,0)))),
-        ("...\n...\n.v.\n...",Some((Location(1,2), (0,1)))),
-        ("...\n...\n...\n.^.",Some((Location(1,3), (0,-1)))),
-        ("...\n...\n...\n...",None)
+        (
+            "...\n.<.\n...\n...",
+            Some((Location(1, 1), (-1_isize, 0_isize))),
+        ),
+        ("...\n^..\n...\n...", Some((Location(0, 1), (0, -1)))),
+        ("...\n..>\n...\n...", Some((Location(2, 1), (1, 0)))),
+        ("...\n...\n.v.\n...", Some((Location(1, 2), (0, 1)))),
+        ("...\n...\n...\n.^.", Some((Location(1, 3), (0, -1)))),
+        ("...\n...\n...\n...", None),
     ];
     for (l, out) in dt.into_iter() {
         let lab = l.parse::<Lab>()?;
-        assert_eq!(find_guard(&lab, &['^','>','v','<']), out, "{lab:#?}, {out:#?}");
+        assert_eq!(
+            find_guard(&lab, &['^', '>', 'v', '<']),
+            out,
+            "{lab:#?}, {out:#?}"
+        );
     }
     Ok(())
 }

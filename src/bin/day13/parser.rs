@@ -1,10 +1,10 @@
 use advent2024::location::Location;
 use nom::{
+    IResult,
     bytes::complete::{tag, take_till},
     character::{complete::alpha1, is_digit},
     combinator::map,
     sequence::{preceded, separated_pair, terminated},
-    IResult
 };
 
 use crate::machine::{Button, ClawMachine};
@@ -24,33 +24,37 @@ pub(super) fn parse_prize_clawmachine(input: &str) -> IResult<&str, (Location, C
 
 // expects "Prize: X=8400, Y=5400"
 pub(super) fn parse_prize(input: &str) -> IResult<&str, Location> {
-    map(
-        preceded(tag("Prize:"), parse_numbers_pair),
-        |(x,y)| Location(x as usize, y as usize)
-    )(input)
+    map(preceded(tag("Prize:"), parse_numbers_pair), |(x, y)| {
+        Location(x as usize, y as usize)
+    })(input)
 }
 
 // expects "Button A: X+94, Y+34"
 pub(super) fn parse_button(input: &str) -> IResult<&str, Button> {
     map(
         separated_pair(
-            map(
-                preceded(tag("Button "), alpha1),
-                |id| if id == "A" { 3 } else { 1 }
-            ),
+            map(preceded(tag("Button "), alpha1), |id| {
+                if id == "A" { 3 } else { 1 }
+            }),
             tag(":"),
-            parse_numbers_pair
+            parse_numbers_pair,
         ),
-        |(cost, (x,y))| Button::new((x as isize, y as isize), cost)
+        |(cost, (x, y))| Button::new((x as isize, y as isize), cost),
     )(input)
 }
 
 // expects " X+94, Y+34"
-pub(super) fn parse_numbers_pair(input: &str) -> IResult<&str, (u32,u32)> {
+pub(super) fn parse_numbers_pair(input: &str) -> IResult<&str, (u32, u32)> {
     separated_pair(
-        preceded(take_till(|c| is_digit(c as u8)), nom::character::complete::u32),
+        preceded(
+            take_till(|c| is_digit(c as u8)),
+            nom::character::complete::u32,
+        ),
         tag(","),
-        preceded(take_till(|c| is_digit(c as u8)), nom::character::complete::u32)
+        preceded(
+            take_till(|c| is_digit(c as u8)),
+            nom::character::complete::u32,
+        ),
     )(input)
 }
 
@@ -69,11 +73,23 @@ mod test {
 
     #[test]
     fn test_parse_button() {
-        assert_eq!("Button A: X+10, Y+10".parse::<Button>(), Ok(Button::new((10, 10),3)));
-        assert_eq!("Button A:X+10,Y+10".parse::<Button>(), Ok(Button::new((10, 10),3)));
+        assert_eq!(
+            "Button A: X+10, Y+10".parse::<Button>(),
+            Ok(Button::new((10, 10), 3))
+        );
+        assert_eq!(
+            "Button A:X+10,Y+10".parse::<Button>(),
+            Ok(Button::new((10, 10), 3))
+        );
         assert!("ButtonA:X+10,Y+10".parse::<Button>().is_err());
-        assert_eq!(parse_prize("Prize: X=8400, Y=5400"),Ok(("",Location(8400, 5400))));
-        assert_eq!(parse_prize("Prize:X=8400,Y=5400"),Ok(("",Location(8400, 5400))));
+        assert_eq!(
+            parse_prize("Prize: X=8400, Y=5400"),
+            Ok(("", Location(8400, 5400)))
+        );
+        assert_eq!(
+            parse_prize("Prize:X=8400,Y=5400"),
+            Ok(("", Location(8400, 5400)))
+        );
         assert!(parse_prize("X=8400, Y=5400").is_err());
     }
 }
