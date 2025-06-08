@@ -9,11 +9,11 @@ use std::time;
 
 fn main() {
     let args = std::env::args();
-    let input = std::fs::read_to_string(match args.skip(1).next() {
-        None => "src/bin/day12/input.txt".to_string(),
-        Some(str) => str,
-    })
-    .unwrap();
+    let input = std::fs::read_to_string(
+        args.skip(1).next()
+            .unwrap_or_else(|| "src/bin/day12/input.txt".to_string())
+    )
+    .expect("Failed to read input file. Please make sure you have the file in the correct directory.");
 
     let calculate_cost =
         |garden: &Garden, fcalc: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
