@@ -16,7 +16,6 @@ fn main() {
         }
     ).unwrap();
 
-    let garden = Garden::parse(&input);
 
     let calculate_cost = |garden: &Garden, fcalc: for<'a> fn((&'a usize, &'a Plot)) -> usize| -> usize {
         garden
@@ -29,17 +28,21 @@ fn main() {
     };
 
     let t = time::Instant::now();
+    let garden = Garden::parse(&input);
+    let t_parse = t.elapsed();
+
     let total_1 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.perimeter_count());
-    let el_puzzle_1 = t.elapsed();
+    let el_puzzle_1 = t.elapsed() - t_parse;
 
     let total_2 = calculate_cost(&garden, |(_, plot)| plot.area() * plot.sides_count());
-    let el_puzzle_2 = t.elapsed() - el_puzzle_1;
+    let el_puzzle_2 = t.elapsed() - el_puzzle_1 - t_parse;
 
     println!("{:?}", &garden);
-    let el_debug = t.elapsed() - el_puzzle_2 - el_puzzle_1;
+    let el_debug = t.elapsed() - el_puzzle_2 - el_puzzle_1 - t_parse;
 
     println!("Part 1 - Garden total cost : {total_1} = {el_puzzle_1:?}");
     println!("Part 2 - Garden total cost : {total_2} = {el_puzzle_2:?}");
+    println!("Parsed Garden in {t_parse:?}");
     println!("Rendered Garden in {el_debug:?}");
 
     assert_eq!(total_1, 1533024);
