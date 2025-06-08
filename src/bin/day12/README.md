@@ -439,61 +439,76 @@ The `perimeter_count` method also uses helper methods `get_plot_y_range` to find
 For Part 2 of the puzzle, we need to count the number of distinct sides rather than the total perimeter length. This is accomplished by the `sides_count` method:
 
 ```rust
-pub(crate) fn sides_count(&self) -> usize {
+pub(super) fn sides_count(&self) -> usize {
     let (west, east) = self.get_plot_bounding_segs();
     let start = self.rows.first().expect("Plot Empty!").0;
-    // reuse HashSet across iterations so to avoid heap allocations overhead
+    // reuse HashSet across iterations so to avoid heap allocation overhead
     let mut corners = HashSet::<u16>::with_capacity(10);
 
-    // number of sides == number of corners
-    // 1 ..XXX.. <- Seg A
-    // 2 .XXX... <- Seg B
-    // a corner is formed between two segments on vertically adjucent lines; current_line and last_line (above)
-    // when seg_a.start != seg_b.start OR seg_a.end != seg_b.end
-    // therefore for
-    // current line = 1 -> last_line is empty hence count = 2 corners
-    // current line = 2 -> last_line has ..XXX.. hence count = 4 corners
-    // current line = OUT OF BOUNDS -> last_line has .XXX... hence count = 2 corners
-    // total corners = 8
-    let (last_line, _, sum) = self.get_plot_y_range()
+    let (last_line, sum) = self.get_plot_y_range()
         .fold((
-            self.rows.range((usize::MAX,west.clone())..(usize::MAX,east.clone())), // line above
-            self.rows.range((start,west.clone())..(start,east.clone())), // current line
+            // y and y-1 segment lines
+            self.rows.range((start,west.clone())..(start,east.clone())), // init condition -> first line
             0,  // accumulator : total number of corners
         ),
-        |(last_line, current_line, sum), y|
+        |(segments, sum), y|
         {
-            // clear corners HashMap
+            // clear corners HashSet
             corners.clear();
-            // we count all unique corners that are formed between 2 lines
-            last_line
-                .chain(current_line.clone())
-                // `*10`, and `*10 - 1` in order to handle edge cases like this below
-                // ..XXXXXX...
-                // XXX...XXX.. <- end() = 3
-                // XX.X..XX... <- start() = 3 MUST not be processed as coinciding with above end()
-                // X..XXXX....
-                // by offseting all end() by -1 we eliminate such cases
+            // we count all unique segment projections between the 2 lines
+            segments
                 .flat_map(|(_,s)| [s.start()*10, s.end()*10 - 1])
                 .for_each(|p| {
-                    if !corners.insert(p) { // have we seen this corner position before ?
-                        corners.remove(&p); // remove position as it matches one above
+                    if !corners.insert(p) { // have we seen this projection before ?
+                        corners.remove(&p); // cancel out projection seen
                     }
                 });
             (
-                current_line,   // current_line becomes last_line
-                self.rows.range((y+1, west.clone())..(y+1,east.clone())),  // next line becomes current_line
-                sum + corners.len()     // count non-overlapping / unique corners that have been seen once
+                self.rows.range((y, west.clone())..(y+1,east.clone())),  // // shift 2 lines Window by 1
+                sum + corners.len()  // count unique projections aka corners
             )
         });
-    // add 2 corners for each bottom line segment
+    // add 2 corners per residual segment in the last line
     sum + last_line.count() * 2
 }
 ```
 
 **Insight:** The key insight for Part 2 is that for any simple polygon (or a collection of simple polygons, which our plots effectively are), the number of sides is equal to the number of "convex" or "concave" corners where the boundary changes direction. Instead of counting individual units of perimeter length, we count these distinct corner locations.
 
-**Reasoning:** The algorithm leverages this corner-counting principle. It works by iterating through the rows containing segments of the plot, considering pairs of vertically adjacent rows at a time. For each pair of lines, it identifies all the horizontal column positions where a segment starts or ends on either line. By using a `HashSet` as a toggle mechanism (`insert` if not present, `remove` if present), it efficiently identifies which of these start/end positions are *unpaired* between the two lines. An unpaired position signifies a point where the vertical boundary of the plot changes direction from one line to the next – i.e., a corner. The multiplication and subtraction on the segment start and end positions (`s.start()*10`, `s.end()*10 - 1`) is a clever way to ensure that a segment ending at column `X` (the non-inclusive bound of a `Range`) and a segment starting at column `X` (the inclusive bound of a `Range`) are treated as events at distinct vertical lines in the grid, preventing accidental cancellation. The total corner count accumulated across all pairs of lines gives the sum of corners along the internal vertical boundaries. Finally, we add the corners formed by the bottom edges of the segments on the plot's last row, as these always contribute two corners per segment since there's no row below to potentially align with their boundaries. This method correctly counts all corners for complex plot shapes, including those with internal holes.
+**Reasoning:** The algorithm leverages this corner-counting principle. It works by iterating through the rows containing segments of the plot, considering *a pair of rows* at a time. For each pair of lines, it identifies all the horizontal column positions where a segment starts or ends on either line.
+
+Importat here is to undestand the **matching** start **or** end positions cancel each other out.
+
+```
+Given the following plot
+Line 1: ...XXXXX.....XXX..
+Line 2: ...XXX..XXX..XX...
+Line 4: ....XXXXXXXXXX....
+
+Calculation of corners by counting unique segment projections between two lines
+        012345678901234567
+No Line
+↕ Proj  ---s---e-----s-e-- = 4 corners; 2 (s)tart + 2 (e)nd projections
+           ^   ^     ^ ^
+Line 0: ...XXXXX.....XXX..
+           v   v     v v
+↕ Proj  ---x-e-es-e--xee-- = 6 corners; 8 - 2 cancelled projections
+           ^ ^  ^ ^  ^^
+Line 1: ...XXX..XXX..XX...
+           v v  v v  vv
+↕ Proj  ---sse--s-e--se--- = 8 corners
+                     e
+            ^        ^
+Line 2: ....XXXXXXXXXX....
+No Line     v        v     = 2 corners
+                           = 20 total corners
+```
+
+By using a `HashSet` as a toggle mechanism (`insert` if not present, `remove` if present), it efficiently identifies which of these start/end positions are *unpaired* between the two lines. An unpaired position signifies a point where the vertical boundary of the plot changes direction from one line to the next – i.e., a corner.
+
+The multiplication and subtraction on the segment start and end positions (`s.start()*10`, `s.end()*10 - 1`) is a clever way to ensure that a segment ending at column `X` (the non-inclusive bound of a `Range`) and a segment starting at column `X` (the inclusive bound of a `Range`) are treated as events at distinct vertical lines in the grid, **preventing accidental cancellation**.
+
+The total corner count accumulated across all pairs of lines gives the sum of corners along the internal vertical boundaries. Finally, we add the corners formed by the bottom edges of the segments on the plot's last row, as these always contribute two corners per segment since there's no row below to potentially align with their boundaries. This method correctly counts all corners for complex plot shapes, including those with internal holes.
 
 ## 7. Step 6: Visualizing the Results
 
