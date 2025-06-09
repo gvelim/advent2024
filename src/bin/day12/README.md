@@ -477,7 +477,12 @@ pub(super) fn sides_count(&self) -> usize {
 
 **Reasoning:** The algorithm leverages this corner-counting principle. It works by iterating through the rows containing segments of the plot, considering *a pair of rows* at a time. For each pair of lines, it identifies all the horizontal column positions where a segment starts or ends on either line.
 
-Importat here is to undestand the **matching** start **or** end positions cancel each other out.
+Therefore a corner is defined when the below statement is `True`
+```
+(SegA.start != SegB.start) OR (SegB.end != SegB.end())
+```
+
+As a consequence of the above, **matching** start **or** end positions cancel each other out.
 
 ```
 Given the following plot
