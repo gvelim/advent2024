@@ -55,11 +55,11 @@ impl Plot {
 
     fn edge_count_north_south(&self, lines: impl Iterator<Item = usize>) -> usize {
         let (west_bound, east_bound) = self.get_plot_bounding_segs();
-
-        let mut lines = lines.peekable();
-        let Some(&start) = lines.peek() else {
-            panic!("perimeter_counter(): Empty 'y' range")
-        };
+        let start = self
+            .rows
+            .first()
+            .expect("edge_count_north_south(): Plot Empty!")
+            .0;
 
         // we fold each iteration using (above, current, below and sum) as input parameters
         // this reduces the number of BTreeSet queries from 3 down to 1 per iteration
@@ -82,13 +82,12 @@ impl Plot {
                             // non-overlapping  = (segment length - above overlaping units) + (segment length - below overlaping units) =>
                             // non-overlapping = 2 * segment lengths - above - below overlapping units
                             2 * seg.len() as usize
-                    // count overlapping units above the line
-                        - seg.count_horizontal_edges(above_row.clone())
-                    // count overlapping units under the line
-                        - seg.count_horizontal_edges(below_row.clone())
+                                // count overlapping units above the line
+                                - seg.count_horizontal_edges(above_row.clone())
+                                // count overlapping units under the line
+                                - seg.count_horizontal_edges(below_row.clone())
                         })
                         .sum::<usize>();
-
                 (
                     // contains y becomes y-1 in next cycle
                     current_row,
@@ -106,7 +105,7 @@ impl Plot {
 
     pub(super) fn sides_count(&self) -> usize {
         let (west, east) = self.get_plot_bounding_segs();
-        let start = self.rows.first().expect("Plot Empty!").0;
+        let start = self.rows.first().expect("sides_count(): Plot Empty!").0;
         // reuse HashSet across iterations so to avoid heap allocation overhead
         let mut corners = HashSet::<u16>::with_capacity(10);
 
