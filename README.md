@@ -2,6 +2,8 @@
 
 This is an educational repository that offers practical examples demonstrating programming principles, design patterns, and Rust language features. Each challenge document explores different aspects of software development through the lens of specific problem solutions.
 
+The repository includes a complete Nix development environment setup for reproducible builds and consistent development experiences across different platforms.
+
 ## Purpose
 
 This repository aims to:
@@ -10,7 +12,19 @@ This repository aims to:
 3. Illustrate how Rust language features can address common programming challenges
 4. Provide educational resources for developers looking to improve their skills
 
-## Problem Examples Index
+## Key Concepts Covered
+
+Across these problems, you'll find examples of:
+
+- **Data Structures**: HashMaps, vectors, custom structs, trees, graphs
+- **Algorithms**: Dynamic programming, recursion, path finding, sorting, graph traversal
+- **Rust Patterns**: Iterators, functional programming, traits, ownership, pattern matching
+- **Design Principles**: Separation of concerns, abstraction, encapsulation, testability
+- **Performance Optimization**: Memoization, efficient data representation, algorithmic choices
+
+We hope these examples help enhance your understanding of both fundamental programming concepts and Rust-specific features. Happy reading!
+
+## Code Puzzles Index
 
 Below you'll find an index to all the documented problems in this repository:
 
@@ -74,14 +88,33 @@ Below you'll find an index to all the documented problems in this repository:
 4. **Run the Examples**: Execute the code to see solutions in action
 5. **Modify and Experiment**: Change parameters or approaches to deepen your understanding
 
-## Key Concepts Covered
+### Development Environment
 
-Across these problems, you'll find examples of:
+This repository includes a complete Nix flake configuration for a reproducible development environment. The setup provides:
+- Rust toolchain with appropriate versions
+- Development dependencies and build tools
+- Cross-platform compatibility (Linux, macOS)
+- Reproducible builds for consistent results
 
-- **Data Structures**: HashMaps, vectors, custom structs, trees, graphs
-- **Algorithms**: Dynamic programming, recursion, path finding, sorting, graph traversal
-- **Rust Patterns**: Iterators, functional programming, traits, ownership, pattern matching
-- **Design Principles**: Separation of concerns, abstraction, encapsulation, testability
-- **Performance Optimization**: Memoization, efficient data representation, algorithmic choices
+#### Quick Start Commands
 
-We hope these examples help enhance your understanding of both fundamental programming concepts and Rust-specific features. Happy reading!
+```bash
+# Enter the development environment
+nix develop
+
+# Build all solutions
+cargo build --release
+
+# Run a specific solution (replace dayX with actual day)
+cargo run --bin day1
+cargo run --bin day2
+# ... etc
+
+# Run tests
+cargo test
+
+# Build reproducible packages
+nix build .#advent2024-solutions
+```
+
+For detailed setup instructions and flake configuration explanation, refer to the [Nix Documentation](flake_nix_documentation.md).
