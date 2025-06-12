@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use std::{
-    collections::{BTreeSet, HashSet},
+    collections::{BTreeSet, HashMap},
     fmt::Debug,
     ops::RangeInclusive,
     usize,
@@ -31,9 +31,7 @@ impl Plot {
     }
 
     pub(super) fn perimeter_count(&self) -> usize {
-        let y_range = self.get_plot_y_range();
-
-        self.edge_count_north_south(y_range.clone())
+        self.edge_count_north_south()
             // a row may contain 1 or more segments of the same plot with gaps in between
             // plot segments in the same raw are *isolated*, that is, they are never next to each other, end of first != start of second
             // therefore vertical segments per row is 2 * number of segments
@@ -53,8 +51,9 @@ impl Plot {
         )
     }
 
-    fn edge_count_north_south(&self, lines: impl Iterator<Item = usize>) -> usize {
+    fn edge_count_north_south(&self) -> usize {
         let (west_bound, east_bound) = self.get_plot_bounding_segs();
+        let lines = self.get_plot_y_range();
         let start = self
             .rows
             .first()
@@ -107,7 +106,7 @@ impl Plot {
         let (west, east) = self.get_plot_bounding_segs();
         let start = self.rows.first().expect("sides_count(): Plot Empty!").0;
         // reuse HashSet across iterations so to avoid heap allocation overhead
-        let mut corners = HashSet::<u16>::with_capacity(10);
+        let mut corners = HashMap::<u16,()>::with_capacity(10);
 
         // number of sides == number of corners
         // 1 ..XXX.. <- Seg A
@@ -138,8 +137,8 @@ impl Plot {
                     // by offseting all end() by -1 we eliminate such cases
                     .flat_map(|(_, s)| [s.start() * 10, s.end() * 10 - 1])
                     .for_each(|p| {
-                        if !corners.insert(p) {
-                            // have we seen this projection before ?
+                        // have we seen this projection before ?
+                        if corners.insert(p,()).is_some() {
                             corners.remove(&p); // cancel out projection seen
                         }
                     });
