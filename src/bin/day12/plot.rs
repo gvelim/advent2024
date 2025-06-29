@@ -3,7 +3,6 @@ use std::{
     collections::{BTreeSet, HashMap},
     fmt::Debug,
     ops::RangeInclusive,
-    usize,
 };
 
 use super::segment::{PlotSegment, Seed};
@@ -106,7 +105,7 @@ impl Plot {
         let (west, east) = self.get_plot_bounding_segs();
         let start = self.rows.first().expect("sides_count(): Plot Empty!").0;
         // reuse HashSet across iterations so to avoid heap allocation overhead
-        let mut corners = HashMap::<u16,()>::with_capacity(10);
+        let mut corners = HashMap::<u16, ()>::with_capacity(10);
 
         // number of sides == number of corners
         // 1 ..XXX.. <- Seg A
@@ -138,7 +137,7 @@ impl Plot {
                     .flat_map(|(_, s)| [s.start() * 10, s.end() * 10 - 1])
                     .for_each(|p| {
                         // have we seen this projection before ?
-                        if corners.insert(p,()).is_some() {
+                        if corners.insert(p, ()).is_some() {
                             corners.remove(&p); // cancel out projection seen
                         }
                     });

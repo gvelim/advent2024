@@ -36,8 +36,8 @@ impl Debug for Garden {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use itertools::Itertools;
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
         use std::fmt::Write as _;
+        use std::hash::{Hash, Hasher};
 
         // Collect all segments from all plots into a BTreeSet.
         // This flattens the data structure and sorts segments primarily by y-coordinate
@@ -88,10 +88,10 @@ impl Debug for Garden {
                 let plant_char = p_seg.plant();
 
                 // Write the ANSI escape code to set the background color using 24-bit color (48;2;R;G;B).
-                write!(&mut buffer, "\x1B[48;2;{};{};{}m", r, g, b)?;
+                write!(&mut buffer, "\x1B[48;2;{r};{g};{b}m")?;
                 // Write the plant character repeatedly for the length of the segment.
                 for _ in 0..p_seg.len() {
-                    write!(&mut buffer, "{}", plant_char)?;
+                    write!(&mut buffer, "{plant_char}")?;
                 }
             }
             // After processing all segments for a scanline,

@@ -216,7 +216,11 @@ mod tests {
 
     #[test]
     fn test_garden_parser() {
-        let test_runs: [(&str, HashMap<usize, (usize, usize)>); 3] = [
+        type Area = usize;
+        type Perimeter = usize;
+        type PlotID = usize;
+        type Result = (Area, Perimeter);
+        let test_runs: [(&str, HashMap<PlotID, Result>); 3] = [
             (
                 "src/bin/day12/sample.txt",
                 HashMap::from([
