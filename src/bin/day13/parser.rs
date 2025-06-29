@@ -1,8 +1,8 @@
 use advent2024::location::Location;
 use nom::{
-    IResult,
+    AsChar, IResult, Parser as _,
     bytes::complete::{tag, take_till},
-    character::{complete::alpha1, is_digit},
+    character::complete::alpha1,
     combinator::map,
     sequence::{preceded, separated_pair, terminated},
 };
@@ -15,8 +15,8 @@ use crate::machine::{Button, ClawMachine};
 // Prize: X=8400, Y=5400
 pub(super) fn parse_prize_clawmachine(input: &str) -> IResult<&str, (Location, ClawMachine)> {
     let mut read_button = terminated(parse_button, tag("\n"));
-    let (input, button_a) = read_button(input)?;
-    let (input, button_b) = read_button(input)?;
+    let (input, button_a) = read_button.parse(input)?;
+    let (input, button_b) = read_button.parse(input)?;
     let (input, prize) = parse_prize(input)?;
 
     Ok((input, (prize, ClawMachine::new(&[button_a, button_b]))))
@@ -26,7 +26,8 @@ pub(super) fn parse_prize_clawmachine(input: &str) -> IResult<&str, (Location, C
 pub(super) fn parse_prize(input: &str) -> IResult<&str, Location> {
     map(preceded(tag("Prize:"), parse_numbers_pair), |(x, y)| {
         Location(x as usize, y as usize)
-    })(input)
+    })
+    .parse(input)
 }
 
 // expects "Button A: X+94, Y+34"
@@ -40,22 +41,24 @@ pub(super) fn parse_button(input: &str) -> IResult<&str, Button> {
             parse_numbers_pair,
         ),
         |(cost, (x, y))| Button::new((x as isize, y as isize), cost),
-    )(input)
+    )
+    .parse(input)
 }
 
 // expects " X+94, Y+34"
 pub(super) fn parse_numbers_pair(input: &str) -> IResult<&str, (u32, u32)> {
     separated_pair(
         preceded(
-            take_till(|c| is_digit(c as u8)),
+            take_till(|c: char| c.is_dec_digit()),
             nom::character::complete::u32,
         ),
         tag(","),
         preceded(
-            take_till(|c| is_digit(c as u8)),
+            take_till(|c: char| c.is_dec_digit()),
             nom::character::complete::u32,
         ),
-    )(input)
+    )
+    .parse(input)
 }
 
 #[cfg(test)]

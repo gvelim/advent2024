@@ -1,10 +1,10 @@
 use nom::{
-    IResult,
+    IResult, Parser as _,
     bytes::complete::tag,
     character::complete::{space0, space1, u64},
     combinator::map,
     multi::separated_list1,
-    sequence::{separated_pair, tuple},
+    sequence::separated_pair,
 };
 use std::{rc::Rc, str::FromStr};
 
@@ -75,14 +75,15 @@ fn parse_equation(s: &str) -> IResult<&str, Equation> {
     map(
         separated_pair(
             u64,
-            tuple((space0, tag(":"))),
-            tuple((space0, separated_list1(space1, u64))),
+            (space0, tag(":")),
+            (space0, separated_list1(space1, u64)),
         ),
         |(result, (_, coeff))| Equation {
             result,
             coeff: coeff.into(),
         },
-    )(s)
+    )
+    .parse(s)
 }
 
 #[cfg(test)]

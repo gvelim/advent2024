@@ -1,7 +1,7 @@
 use nom::branch::alt;
 use nom::combinator::map;
 use nom::{
-    IResult,
+    IResult, Parser,
     bytes::complete::tag,
     character::complete::{anychar, char},
     combinator::value,
@@ -87,7 +87,7 @@ impl FromStr for Program {
         let mut instructions = vec![];
 
         while let Ok((remaining, (_, instruction))) =
-            many_till(anychar, alt((parse_mul, parse_do, parse_dont)))(s)
+            many_till(anychar, alt((parse_mul, parse_do, parse_dont))).parse(s)
         {
             instructions.push(instruction);
             s = remaining;
@@ -109,13 +109,14 @@ fn parse_mul(i: &str) -> IResult<&str, Instruction> {
             |(x, y)| Instruction::MUL(x, y),
         ),
         tag(")"),
-    )(i)
+    )
+    .parse(i)
 }
 
 fn parse_do(i: &str) -> IResult<&str, Instruction> {
-    value(Instruction::DO, tag("do()"))(i)
+    value(Instruction::DO, tag("do()")).parse(i)
 }
 
 fn parse_dont(i: &str) -> IResult<&str, Instruction> {
-    value(Instruction::DONT, tag("don't()"))(i)
+    value(Instruction::DONT, tag("don't()")).parse(i)
 }
