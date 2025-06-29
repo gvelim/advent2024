@@ -158,8 +158,6 @@ impl Debug for Plot {
 
         const SPACE_ANSI: &str = "\x1B[38;2;128;128;128;48;2;16;16;128m";
         const PLANT_ANSI: &str = "\x1B[38;2;255;255;0;48;2;16;16;128m";
-        // use a line buffer to render the output
-        let mut buffer = String::with_capacity(200);
 
         // capture plot's left & right bounds
         let (left, right) = self
@@ -169,45 +167,48 @@ impl Debug for Plot {
                 (left.min(seg.start()), right.max(seg.end()))
             });
 
-        // create tmp buffer to store the ranges per line of segments
-        let mut segs = Vec::with_capacity(20);
-
         // given all segments are ordered by 'y' and 'seg.start'
         // it is easy and cheap to iterate per line; we chunk by 'y'
         for (y, line_segments) in &self.rows.iter().chunk_by(|(y, _)| *y) {
-            let mut ptr = left;
-            segs.clear();
-            buffer.clear();
+            let (next_pos, mut buffer, segs) = line_segments.fold(
+                (
+                    left,
+                    // use a line buffer to render the output
+                    String::with_capacity(20),
+                    // create tmp buffer to store the ranges per line of segments
+                    Vec::with_capacity(20),
+                ),
+                |(mut next_pos, mut buffer, mut segs), (_, seg)| {
+                    // every segment is prefixed with 0..* '.' starting from 'ptr'
+                    write!(&mut buffer, "{SPACE_ANSI}").ok();
+                    for _ in next_pos..seg.start() {
+                        write!(&mut buffer, ".").ok();
+                    }
+                    // write the segment
+                    write!(&mut buffer, "{PLANT_ANSI}").ok();
+                    for _ in seg.start()..seg.end() {
+                        write!(&mut buffer, "{}", seg.plant()).ok();
+                    }
+                    // capture new start position of '.'
+                    next_pos = seg.end();
+                    // save segment for display
+                    segs.push(seg.start()..seg.end());
 
-            write!(&mut buffer, "{y:<3} ")?;
-            for (_, seg) in line_segments {
-                // every segment is prefixed with 0..* '.' starting from 'ptr'
-                write!(&mut buffer, "{SPACE_ANSI}")?;
-                for _ in ptr..seg.start() {
-                    write!(&mut buffer, ".")?
-                }
-                // write the segment
-                write!(&mut buffer, "{PLANT_ANSI}")?;
-                for _ in seg.start()..seg.end() {
-                    write!(&mut buffer, "{}", seg.plant())?
-                }
-                // capture new start position of '.'
-                ptr = seg.end();
-                // save segment for display
-                segs.push(seg.start()..seg.end());
-            }
+                    (next_pos, buffer, segs)
+                },
+            );
 
             // every line finishes with 0..* '.' starting from 'ptr'
             write!(&mut buffer, "{SPACE_ANSI}")?;
-            for _ in ptr..right {
+            for _ in next_pos..right {
                 write!(&mut buffer, ".")?
             }
             write!(&mut buffer, "\x1B[0m")?;
-
             // write buffer to output
-            write!(f, "{buffer} = ")?;
-            // display the ranges of all the line segments drawn
+            write!(f, "{buffer} {y:>2}:")?;
+            // Render the ranges of all the line segments drawn
             f.debug_list().entries(segs.iter()).finish()?;
+            // write buffer to output
             writeln!(f)?;
         }
         Ok(())
