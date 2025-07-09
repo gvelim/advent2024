@@ -23,13 +23,20 @@
           nixd
           git
           starship
-          hstr
+          nix-bash-completions
         ];
         RUSTC_VERSION = overrides.toolchain.channel;
         shellHook = ''
           export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
           # Dynamically determine the Rust system string (architecture-os) for the current system
           export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/${RUSTC_VERSION}-${system}/bin/
+
+          # enable starship for branch and active SDKs
+          [ ! -f ~/.config/starship.toml ] && starship preset no-nerd-font -o ~/.config/starship.toml
+          eval "$(starship init bash)"
+          # acticate bash completions
+          source ${pkgs.bash-completion}/etc/profile.d/bash_completion.sh
+
           echo "Welcome to the Advent2024 development environment!"
           eval "$(starship init bash)"
           eval "$(hstr --show-bash-configuration)"
