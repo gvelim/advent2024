@@ -31,6 +31,8 @@
           # Dynamically determine the Rust system string (architecture-os) for the current system
           export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/${RUSTC_VERSION}-${system}/bin/
 
+          # ensure we get colour output
+          alias ls='ls --color=auto'
           # enable starship for branch and active SDKs
           [ ! -f ~/.config/starship.toml ] && starship preset no-nerd-font -o ~/.config/starship.toml
           eval "$(starship init bash)"
