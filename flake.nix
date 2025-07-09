@@ -22,6 +22,8 @@
           nil
           nixd
           git
+          starship
+          hstr
         ];
         RUSTC_VERSION = overrides.toolchain.channel;
         shellHook = ''
@@ -29,6 +31,8 @@
           # Dynamically determine the Rust system string (architecture-os) for the current system
           export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/${RUSTC_VERSION}-${system}/bin/
           echo "Welcome to the Advent2024 development environment!"
+          eval "$(starship init bash)"
+          eval "$(hstr --show-bash-configuration)"
           # zed .
         '';
 

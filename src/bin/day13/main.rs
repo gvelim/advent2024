@@ -9,7 +9,7 @@ fn main() {
 
     let runs = input
         .split("\n\n")
-        .map(|run| parse_prize_clawmachine(run))
+        .map(parse_prize_clawmachine)
         .map(|res| res.map(|(_, res)| res))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| panic!("{e:?}"))
