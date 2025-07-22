@@ -24,6 +24,7 @@
           git
           starship
           nix-bash-completions
+          hstr
         ];
         RUSTC_VERSION = overrides.toolchain.channel;
         shellHook = ''
@@ -40,7 +41,6 @@
           source ${pkgs.bash-completion}/etc/profile.d/bash_completion.sh
 
           echo "Welcome to the Advent2024 development environment!"
-          eval "$(starship init bash)"
           eval "$(hstr --show-bash-configuration)"
           # zed .
         '';
