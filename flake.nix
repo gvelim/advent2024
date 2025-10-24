@@ -28,10 +28,6 @@
         ];
         RUSTC_VERSION = overrides.toolchain.channel;
         shellHook = ''
-          export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
-          # Dynamically determine the Rust system string (architecture-os) for the current system
-          export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/${RUSTC_VERSION}-${system}/bin/
-
           # ensure we get colour output
           alias ls='ls --color=auto'
           # enable starship for branch and active SDKs
